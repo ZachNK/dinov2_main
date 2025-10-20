@@ -1,15 +1,15 @@
 # DINOv3 Image Matching (Docker)
 
-Docker Desktop 위에서 DINOv3 기반 이미지 매칭과 시각화를 수행하기 위한 프로젝트입니다.  
-컨테이너 안에서는 1:1 매칭을 수행하도록 구성되어 있으며, 결과(JSON/PNG)는 호스트의 지정된 디렉터리에 저장됩니다.
+Docker Desktop 위에서 DINOv3 기반 이미지 매칭과 시각화를 수행하기 위한 프로젝트.  
+컨테이너 안에서는 1:1 매칭을 수행하도록 구성되어 있으며, 결과(JSON/PNG)는 호스트의 지정된 디렉터리에 저장.
 
 ---
 
 ## 0) 요구 사항
 
 - **Windows 11** + **Docker Desktop**  
-  - WSL 통합 없이 일반 Docker Desktop 환경에서 동작합니다.  
-  - Docker Desktop Settings → Resources → File Sharing 에서 프로젝트/데이터 폴더가 공유되어 있는지 확인하세요.
+  - WSL 통합 없이 일반 Docker Desktop 환경에서 동작.  
+  - Docker Desktop Settings → Resources → File Sharing 에서 프로젝트/데이터 폴더가 공유되어 있는지 확인.
 - **NVIDIA GPU & 최신 드라이버** (CUDA 12.x 호환)
 - **NVIDIA Container Toolkit** (Docker Desktop 설치 시 자동 포함)
 - 권장 체크 명령
@@ -49,7 +49,7 @@ dinov3_docker/
 
 ## 2) `.env` 설정
 
-`cp .env.example .env` 후 자신의 환경에 맞게 수정합니다. 모든 경로는 **Windows 경로**로 작성하세요.
+`cp .env.example .env` 후 자신의 환경에 맞게 수정. 모든 경로는 **Windows 경로**로 작성.
 
 | 변수 | 설명 | 예시 (Windows) |
 | --- | --- | --- |
@@ -67,7 +67,7 @@ dinov3_docker/
 | `TZ` | 컨테이너 시간대 | `Asia/Seoul` |
 | `DINOV3_BLOCK_NET` | torch.hub 다운로드 차단 (0/1) | `1` |
 
-`IMATCH_VIZ_FOCUS` 는 비워 두면 실행 시 직접 선택하게 됩니다.
+`IMATCH_VIZ_FOCUS` 는 비워 두면 실행 시 직접 선택.
 
 ---
 
@@ -79,7 +79,7 @@ docker compose up -d        # 컨테이너 백그라운드 실행
 docker compose ps           # 상태 확인
 ```
 
-변경 사항 적용 또는 `.env`를 수정한 뒤에는 `docker compose up -d --force-recreate`로 재생성하세요.  
+변경 사항 적용 또는 `.env`를 수정한 뒤에는 `docker compose up -d --force-recreate`로 재생성.  
 GPU가 인식되는지 확인:
 ```powershell
 docker compose exec pair nvidia-smi
@@ -96,7 +96,7 @@ docker compose exec pair run --weights vitl16 -a 400.0200 -b 200.0200
 ```
 
 - `-a`, `-b`: ALT.FRAME 형식 (예: `400.0200`)  
-  지정하지 않으면 모든 조합을 순회합니다.
+  지정하지 않으면 모든 조합을 순회.
 - `--weights`: 사용 모델 alias (여러 개 지정 가능)  
   `--group`, `--all-weights` 옵션도 지원.
 - 주요 튜닝 파라미터
@@ -108,7 +108,7 @@ docker compose exec pair run --weights vitl16 -a 400.0200 -b 200.0200
   | `--keypoint-th` | 0.015 | 토큰 L2 임계값 |
   | `--line-th` | 0.2 | 최고 유사도 대비 상대 임계값 |
 
-- 내부 매칭 로직은 mutual k-NN(k=1) + greedy 1:1 선택으로 동작하며 결과 JSON은 `/exports/pair_match/<weight>_<ALT>_<FRAME>/…` 에 저장됩니다.
+- 내부 매칭 로직은 mutual k-NN(k=1) + greedy 1:1 선택으로 동작하며 결과 JSON은 `/exports/pair_match/<weight>_<ALT>_<FRAME>/…` 에 저장.
 
 ---
 
@@ -133,7 +133,7 @@ docker compose exec pair vis --focus vitl16_400_0200
 | `--max-lines` | 1000 | 그릴 매칭 수 (0이면 미표시) |
 | `--draw-points` | OFF | 점 표시 여부 |
 
-실행 결과는 호스트 `EXPORT_HOST\pair_viz\…`에서 확인할 수 있습니다.
+실행 결과는 호스트 `EXPORT_HOST\pair_viz\…`에서 확인.
 
 ---
 
@@ -146,7 +146,7 @@ docker compose exec pair vis --focus vitl16_400_0200
   - `advanced_settings`: 사용한 매칭/필터 파라미터 (`matching_mode`는 현재 `mutual_knn_k1_unique`)
   - `patch`: 선택된 패치 정보 (`idx_a`, `idx_b`, `similarities` 등)
 
-필요 시 결과 폴더를 탐색기에서 바로 열어 확인하세요.
+필요 시 결과 폴더를 탐색기에서 바로 열어 확인.
 
 ---
 
@@ -159,10 +159,10 @@ docker compose exec pair vis --focus vitl16_400_0200
 | 볼륨 마운트 실패 | Docker Desktop Settings → Resources → File Sharing 에서 각 드라이브 허용 여부 확인 |
 | 매칭 JSON이 생성되지 않음 | `pairs_to_run=0` 인 경우 ALT.FRAME 조합이 존재하지 않는 것 → 데이터셋 이름/정규식 확인 |
 | `IMATCH_VIZ_FOCUS` 경고 | `.env`에서 비워 둔 경우 출력되는 안내. 필요 시 빈 값으로 유지하거나, 원하는 기본 focus 값을 입력 |
-| 1:1 매칭이 맞지 않는 것처럼 보임 | `run` 내부에서 자동으로 1:1을 강제합니다. PNG 상에서 선이 적게 보인다면 RANSAC 필터를 완화하거나 `vis --ransac off`로 검증 |
+| 1:1 매칭이 맞지 않는 것처럼 보임 | `run` 내부에서 자동으로 1:1을 강제함. PNG 상에서 선이 적게 보인다면 RANSAC 필터를 완화하거나 `vis --ransac off`로 검증 |
 | 기타 로그 | `docker compose logs -f pair` 로 컨테이너 로그 확인 |
 
 ---
 
-필요한 경우 `docker compose exec pair bash`로 컨테이너 내부에 진입하여 추가 디버깅을 진행할 수 있습니다.  
-문의나 개선 사항은 저장소 이슈로 남겨 주세요.
+필요한 경우 `docker compose exec pair bash`로 컨테이너 내부에 진입하여 추가 디버깅을 진행 가능.  
+
