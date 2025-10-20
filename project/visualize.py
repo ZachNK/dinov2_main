@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 visualize.py
 - runCLI.py 가 생성한 JSON을 읽어 좌/우 이미지 매칭을 PNG로 저장

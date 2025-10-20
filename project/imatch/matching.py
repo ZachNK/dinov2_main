@@ -48,6 +48,44 @@ def compute_matches_mutual_knn(pa: np.ndarray, pb: np.ndarray, k: int = 5, topk:
     order = np.argsort(-sim)[:keep]
     return ia[order], ib[order], sim[order]
 
+def enforce_unique_matches(
+    ia: np.ndarray,
+    ib: np.ndarray,
+    sim: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Greedy 1:1 selection of matches based on descending similarity.
+    """
+    if ia.size == 0:
+        return ia, ib, sim
+
+    order = np.argsort(-sim)
+    used_a = set()
+    used_b = set()
+    sel_a = []
+    sel_b = []
+    sel_sim = []
+
+    for idx in order:
+        a = int(ia[idx])
+        b = int(ib[idx])
+        if a in used_a or b in used_b:
+            continue
+        used_a.add(a)
+        used_b.add(b)
+        sel_a.append(a)
+        sel_b.append(b)
+        sel_sim.append(sim[idx])
+
+    if not sel_a:
+        return np.array([], dtype=int), np.array([], dtype=int), np.array([], dtype=np.float32)
+
+    return (
+        np.array(sel_a, dtype=int),
+        np.array(sel_b, dtype=int),
+        np.array(sel_sim, dtype=np.float32),
+    )
+
 def grid_side(n: int):
     """
     n 이 완전제곱수이면 sqrt(n)을 반환, 아니면 None
