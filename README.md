@@ -8,7 +8,7 @@ Docker Desktop 위에서 DINOv3 기반 이미지 매칭과 시각화를 수행�
 ## 0) 요구 사항
 
 - **Windows 11** + **Docker Desktop**  
-  - WSL 통합 없이 일반 Docker Desktop 환경에서 동작.  
+  - Docker Desktop 환경에서 동작.  
   - Docker Desktop Settings → Resources → File Sharing 에서 프로젝트/데이터 폴더가 공유되어 있는지 확인.
 - **NVIDIA GPU & 최신 드라이버** (CUDA 12.x 호환)
 - **NVIDIA Container Toolkit** (Docker Desktop 설치 시 자동 포함)
@@ -67,7 +67,6 @@ dinov3_docker/
 | `TZ` | 컨테이너 시간대 | `Asia/Seoul` |
 | `DINOV3_BLOCK_NET` | torch.hub 다운로드 차단 (0/1) | `1` |
 
-`IMATCH_VIZ_FOCUS` 는 비워 두면 실행 시 직접 선택.
 
 ---
 
@@ -99,6 +98,23 @@ docker compose exec pair run --weights vitl16 -a 400.0200 -b 200.0200
   지정하지 않으면 모든 조합을 순회.
 - `--weights`: 사용 모델 alias (여러 개 지정 가능)  
   `--group`, `--all-weights` 옵션도 지원.
+
+  | backbone | flag |
+  | -------- | ---- |
+  | `ViT-S/16 distilled` | `vits16` |    
+  | `ViT-S+/16 distilled` |`vits16+` |   
+  | `ViT-B/16 distilled` | `vitb16` |
+  | `ViT-L/16 distilled` | `vitl16` | 
+  | `ViT-H+/16 distilled` | `vith16+` |
+  | `ViT-7B/16` | `vit7b16` |
+  | `ConvNeXt Tiny` | `cxTiny` |  
+  | `ConvNeXt Small` | `cxSmall` |  
+  | `ConvNeXt Base` | `cxBase` |   
+  | `ConvNeXt Large` | `cxLarge` |  
+  | `ViT-L/16 distilled` | `vitl16sat` | 
+  | `ViT-7B/16` | `vit7b16sat` |
+
+
 - 주요 튜닝 파라미터
   | 옵션 | 기본값 | 설명 |
   | --- | --- | --- |
@@ -108,7 +124,7 @@ docker compose exec pair run --weights vitl16 -a 400.0200 -b 200.0200
   | `--keypoint-th` | 0.015 | 토큰 L2 임계값 |
   | `--line-th` | 0.2 | 최고 유사도 대비 상대 임계값 |
 
-- 내부 매칭 로직은 mutual k-NN(k=1) + greedy 1:1 선택으로 동작하며 결과 JSON은 `/exports/pair_match/<weight>_<ALT>_<FRAME>/…` 에 저장.
+- 결과 JSON은 `/exports/pair_match/<weight>_<ALT>_<FRAME>/…` 에 저장.
 
 ---
 
@@ -158,7 +174,6 @@ docker compose exec pair vis --focus vitl16_400_0200
 | 컨테이너에서 GPU 미노출 | `docker compose exec pair nvidia-smi` 확인 → NVIDIA 드라이버/NVIDIA Container Toolkit 재설치 |
 | 볼륨 마운트 실패 | Docker Desktop Settings → Resources → File Sharing 에서 각 드라이브 허용 여부 확인 |
 | 매칭 JSON이 생성되지 않음 | `pairs_to_run=0` 인 경우 ALT.FRAME 조합이 존재하지 않는 것 → 데이터셋 이름/정규식 확인 |
-| `IMATCH_VIZ_FOCUS` 경고 | `.env`에서 비워 둔 경우 출력되는 안내. 필요 시 빈 값으로 유지하거나, 원하는 기본 focus 값을 입력 |
 | 1:1 매칭이 맞지 않는 것처럼 보임 | `run` 내부에서 자동으로 1:1을 강제함. PNG 상에서 선이 적게 보인다면 RANSAC 필터를 완화하거나 `vis --ransac off`로 검증 |
 | 기타 로그 | `docker compose logs -f pair` 로 컨테이너 로그 확인 |
 

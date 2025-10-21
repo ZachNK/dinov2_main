@@ -1,4 +1,4 @@
-"""
+﻿"""
 visualize.py
 - runCLI.py 가 생성한 JSON을 읽어 좌/우 이미지 매칭을 PNG로 저장
 - 입력: --root (기본 /exports/pair_match) 내 JSON
@@ -18,7 +18,7 @@ from PIL import Image
 
 from imatch.env import PAIR_VIZ_DIR
 
-PAIR_MATCH_ROOT = Path("/exports/pair_match")  # JSON 기본 루트
+PAIR_MATCH_ROOT = Path("/exports/pair_match")  # JSON 湲곕낯 猷⑦듃
 
 
 def _discover_homography_methods() -> Tuple[dict, str]:
@@ -108,7 +108,7 @@ def bounded_float(low: float, high: float):
     return _check
 
 
-def list_focus_candidates(root: Path) -> List[str]:
+def list_pick_candidates(root: Path) -> List[str]:
     candidates: List[str] = []
     if not root.exists():
         return candidates
@@ -121,46 +121,28 @@ def list_focus_candidates(root: Path) -> List[str]:
     return candidates
 
 
-def prompt_focus(root: Path) -> List[str]:
-    candidates = list_focus_candidates(root)
+def prompt_pick(root: Path) -> List[str]:
+    candidates = list_pick_candidates(root)
     if not sys.stdin.isatty():
-        raise SystemExit("No focus specified and interactive selection unavailable (non-tty).")
+        raise SystemExit("No specified and interactive selection unavailable (non-tty).")
     if not candidates:
-        print("[info] focus candidates가 없어 전체 JSON을 시각화합니다.")
+        print("[info] candidates가 없어 전체 JSON을 시각화합니다.")
         return ["**/*.json"]
 
-    print("[focus] 선택 가능한 항목:")
+    print("번호로 선택하시오:")
     for idx, rel in enumerate(candidates, start=1):
         print(f"  {idx:2d}. {rel}")
-    print("  a. all (전체)")
 
     while True:
-        choice = input("시각화할 항목 번호 또는 경로(콤마 구분)를 입력하세요: ").strip()
+        choice = input("시각화할 항목 번호를 입력하세요: ").strip()
         if not choice:
-            print("  입력이 비어 있습니다. 다시 입력하세요.")
+            print("  숫자를 입력하세요.")
             continue
-        if choice.lower() in ("a", "all"):
-            return ["**/*.json"]
-
-        selected: List[str] = []
-        valid = True
-        for token in choice.split(","):
-            tok = token.strip()
-            if not tok:
-                continue
-            if tok.isdigit():
-                idx = int(tok) - 1
-                if 0 <= idx < len(candidates):
-                    selected.append(candidates[idx].rstrip("/"))
-                else:
-                    print(f"  잘못된 번호: {tok}")
-                    valid = False
-                    break
-            else:
-                selected.append(tok.rstrip("/"))
-        if valid and selected:
-            return selected
-        print("  다시 입력하세요.")
+        idx = int(choice) - 1
+        if not 0 <= idx < len(candidates):
+            print(f"  1에서 {len(candidates)} 사이의 숫자를 입력하세요.")
+            continue
+        return [candidates[idx]]
 
 
 def add_json_path(acc: List[Path], seen: Set[Path], path: Path) -> None:
@@ -179,30 +161,18 @@ def collect_jsons(root: Path, selections: Iterable[str]) -> List[Path]:
     for sel in selections:
         if not sel:
             continue
-        entry = Path(sel)
-        candidates: List[Path] = []
-
-        if entry.is_absolute():
-            candidates = [entry]
+        if sel in (".", "/"):
+            target = root
         else:
-            entry_rel = root / entry
-            if entry_rel.exists():
-                candidates = [entry_rel]
-            else:
-                candidates = list((root).glob(sel))
-                if not candidates and not sel.startswith("**/"):
-                    candidates = list((root).glob(f"**/{sel}"))
-
-        if not candidates:
-            print(f"[warn] 선택한 항목에 해당하는 JSON을 찾지 못했습니다: {sel}")
+            target = root / sel
+        if not target.exists():
+            print(f"[warn] 선택한 항목이 존재하지 않습니다: {sel}")
             continue
-
-        for cand in candidates:
-            if cand.is_dir():
-                for jp in sorted(cand.rglob("*.json")):
-                    add_json_path(files, seen, jp)
-            else:
-                add_json_path(files, seen, cand)
+        if target.is_dir():
+            for jp in sorted(target.rglob("*.json")):
+                add_json_path(files, seen, jp)
+        else:
+            add_json_path(files, seen, target)
 
     return sorted(files)
 
@@ -276,7 +246,7 @@ def ransac_filter(
     return np.ones((N,), dtype=bool)
 
 
-# ---------- 그리기 ----------
+# ---------- 그리기----------
 def hstack_images(imA: np.ndarray, imB: np.ndarray, pad: int = 8, color=(30, 30, 30)) -> Tuple[np.ndarray, int]:
     h = max(imA.shape[0], imB.shape[0])
     wA, wB = imA.shape[1], imB.shape[1]
@@ -346,16 +316,10 @@ def main():
     reproj_default = clamp(env_float("IMATCH_VIZ_REPROJ_TH", 8.0), 0.0, 12.0)
     confidence_default = clamp(env_float("IMATCH_VIZ_CONFIDENCE", 0.9999), 0.0, 1.0)
     iters_default = clamp(env_int("IMATCH_VIZ_ITERS", 10000), 0, 100000)
-    focus_env = os.environ.get("IMATCH_VIZ_FOCUS")
-    focus_default = None
-    if focus_env:
-        focus_default = [part.strip() for part in focus_env.split(",") if part.strip()]
 
     ap = argparse.ArgumentParser(description="Visualize DINOv3 matches (from JSON)")
     ap.add_argument("--root", type=str, default=str(root_default),
                     help="매칭 JSON이 위치한 루트 (기본: IMATCH_VIZ_ROOT 또는 /exports/pair_match)")
-    ap.add_argument("--focus", nargs="+", default=focus_default, metavar="PATH",
-                    help="시각화 대상 디렉토리/JSON/패턴 (기본: 실행 시 선택)")
     ap.add_argument("--out", type=str, default=str(out_default),
                     help="결과 PNG 저장 루트 (기본: IMATCH_VIZ_OUT 또는 PAIR_VIZ_DIR)")
     ap.add_argument("--max-lines", type=bounded_int(0, 5000), default=max_lines_default,
@@ -393,15 +357,13 @@ def main():
         HOMOGRAPHY_METHODS.get(HOMOGRAPHY_DEFAULT, cv2.RANSAC),
     )
 
-    focus_entries = args.focus
-    if not focus_entries:
-        focus_entries = prompt_focus(pairs_root)
+    pick_entries = prompt_pick(pairs_root)
 
-    json_paths = collect_jsons(pairs_root, focus_entries)
+    json_paths = collect_jsons(pairs_root, pick_entries)
     if not json_paths:
         print("[warn] 선택된 항목에서 JSON을 찾지 못했습니다.")
         return
-    print(f"[focus] total_json={len(json_paths)}")
+    print(f"total_json={len(json_paths)}")
 
     out_root = Path(args.out).expanduser()
     out_root.mkdir(parents=True, exist_ok=True)
