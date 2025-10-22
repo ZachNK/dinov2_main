@@ -18,12 +18,46 @@ Docker Desktop 위에서 DINOv3 기반 이미지 매칭과 시각화를 수행�
   nvidia-smi
   ```
 
+
+### 0-1) Docker Desktop 설치
+- 개인 PC 운영체제에 맞는 Docker Desktop 다운로드 후 설치 
+- 본 프로젝트는 `4.46.0` 버전 사용
+
+- 개인 PC 시스템 환경 확인
+```powershell
+Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
+```
+
+  > _출력결과_:
+  ```powershell
+  # x64 (AMD64)
+  9 
+
+  # ARM64
+  12
+  ```
+
+- Docker Desktop 설치: 
+  > https://www.docker.com/
+
+<p align="center">
+  <img src="docs/examples/docker_main.png" width = "50%"/>
+  <figcaption align="center">(출력결과 9: AMD64 설치, 출력결과 12: ARM64 설치)</figcaption>
+  <figcaption align="center">대부분 Desktop/노트북은 x64(AMD64), Intel CPU사용하더라도 AMD64를 받는것이 일반적</figcaption>
+</p>
+
+
+### 0-2) Docker Desktop 설치 후 기본 설정
+- Docker Desktop 실행 → 리소스 제한 (CPU/Memory) → WSL2 (Windows) 연동 등 환경 설정 확인
+- 프로젝트에 필요한 GPU 관련 드라이버/Container Runtime(NVIDIA Container toolkit) 설치
+
+
 ---
 
 ## 1) 저장소 구조 & 필수 리소스
 
 ```
-dinov3_docker/
+dinov3_main/
 ├─ project/
 │  ├─ imatch/           # 라이브러리 모듈
 │  ├─ run.py            # 매칭 실행 엔트리
@@ -35,71 +69,76 @@ dinov3_docker/
 └─ README.md
 ```
 
-필수 리소스
+필수 리소스 (작업할 디렉토리: _`<Your>\<Project>\<Directory>`_ 라고 가정)
+- **본 실행 프로젝트**  
+  _예시 위치: `<Your>\<Project>\<Directory>\dinov3_main`_
+
 - **facebookresearch/dinov3** 저장소 (코드 참조용)  
-  예시 위치: `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_main`
+  _예시 위치: `<Your>\<Project>\<Directory>\dinov3_src`_
+
 - **사전 학습 가중치(.pth)**  
-  예시 위치: `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_weights`
+  _예시 위치: `<Your>\<Project>\<Directory>\dinov3_weights`_
+
 - **매칭 대상 이미지 데이터셋**  
-  예시 위치: `D:\GoogleDrive\KNK_Lab\_Datasets\shinsung_data`
+  _예시 위치: `<Your>\<Project>\<Directory>\dinov3_data`_
+
 - **결과 저장 디렉터리**  
-  예시 위치: `D:\GoogleDrive\KNK_Lab\Exports`
+  _예시 위치: `<Your>\<Project>\<Directory>\Exports`_
+
 
 ### 1-1) DINOv3 원본 저장
 
-작업하고자 하는 디렉토리에 먼저 접근하여 본 프로젝트를 `dinov3_docker` 하위 경로에 clone한다. 
+
+작업하고자 하는 디렉토리(_`<Your>\<Project>\<Directory>`_)에 먼저 접근하여 본 프로젝트를 `dinov3_main` 하위 경로에 clone한다. 
 
 ```powershell
-git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov3_docker
+git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov3_main
 ```
 
 ### 1-2) DINOv3 원본 저장
 
-(작업할 디렉토리: `C:\a\b\c\d` 라고 가정)\
-작업할 경로 (`C:\a\b\c\d`)에 DINOv3 원본을 저장한다.
+
+작업할 경로 (_`<Your>\<Project>\<Directory>`_)에서 `dinov3_src` 하위 경로에 DINOv3 원본을 저장한다.
 
 ```powershell
-git clone https://github.com/facebookresearch/dinov3.git .\dinov3_main
+git clone https://github.com/facebookresearch/dinov3.git .\dinov3_src
 ```
 
 ### 1-3) 백본 백본 준비 
 
-그리고 상위 경로에 `dinov3_weights` 라는 디렉토리로 백본 데이터를 준비 한다.\
-https://github.com/facebookresearch/dinov3에 게시된 가중치를 `dinov3_weights`이라는 폴더를 생성하고 바로 저장한다.\
-만약 방금 DINOv3원본을 clone한 디렉토리가 `C:\a\b\c\d\dinov3_main`이라 가정한다면: 
+_`<Your>\<Project>\<Directory>`_ 경로에 `dinov3_weights` 라는 디렉토리 생성하여 백본 데이터를 준비 한다.\
+https://github.com/facebookresearch/dinov3에 게시된 가중치를 `dinov3_weights`이라는 폴더를 생성하고 바로 저장한다.
 
 ```powershell
 # dinov3_weights 디렉토리 생성. 해당 경로에 ViT-S/16 distilled, ConvNeXt Tiny, ... , ViT-7B/16 를 저장
-New-Item -ItemType Directory -Path C:\a\b\c\d\dinov3_weights -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights -ErrorAction SilentlyContinue
 ```
 
 ```powershell
 # dinov3_weights에 디렉토리 추가 생성
-New-Item -ItemType Directory -Path C:\a\b\c\d\dinov3_weights\01_ViT_LVD-1689M -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path C:\a\b\c\d\dinov3_weights\02_ConvNeXT_LVD-1689M -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path C:\a\b\c\d\dinov3_weights\03_ViT_SAT-493M -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\02_ConvNeXT_LVD-1689M -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\03_ViT_SAT-493M -ErrorAction SilentlyContinue
 ```
 
 ```powershell
 # dinov3_weights 디렉토리에 저장된 .pth 파일들 데이터셋별로 정리
 
-# dinov3_weights\01_ViT_LVD-1689M에 파일 이동 (ViT-S/16 distilled 이동할 때)
-Move-Item -Path C:\a\b\c\d\dinov3_vits16_pretrain_lvd1689m-08c60483.pth -Destination C:\a\b\c\d\dinov3_weights\01_ViT_LVD-1689M
+# 1) dinov3_weights\01_ViT_LVD-1689M에 파일 이동 (ViT-S/16 distilled 이동할 때)
+Move-Item -Path <Your>\<Project>\<Directory>\dinov3_vits16_pretrain_lvd1689m-08c60483.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
 
 # ... 나머지 ViT-S+/16 distilled, ViT-B/16 distilled 등 .pth파일 이동
 
-# dinov3_weights\02_ConvNeXT_LVD-1689M에 파일 이동 (ConvNeXt Tiny 이동할 때)
-Move-Item -Path C:\a\b\c\d\dinov3_convnext_tiny_pretrain_lvd1689m-21b726bb.pth -Destination C:\a\b\c\d\dinov3_weights\01_ViT_LVD-1689M
+# 2) dinov3_weights\02_ConvNeXT_LVD-1689M에 파일 이동 (ConvNeXt Tiny 이동할 때)
+Move-Item -Path <Your>\<Project>\<Directory>\dinov3_convnext_tiny_pretrain_lvd1689m-21b726bb.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
 
 # ... 나머지 ConvNeXt Small, ConvNeXt Base 등 .pth파일 이동
 
-# dinov3_weights\03_ViT_SAT-493M에 파일 이동 (ViT-L/16 distilled 이동할 때)
-Move-Item -Path C:\a\b\c\d\dinov3_vitl16_pretrain_sat493m-eadcf0ff.pth -Destination C:\a\b\c\d\dinov3_weights\01_ViT_LVD-1689M
+# 3) dinov3_weights\03_ViT_SAT-493M에 파일 이동 (ViT-L/16 distilled 이동할 때)
+Move-Item -Path <Your>\<Project>\<Directory>\dinov3_vitl16_pretrain_sat493m-eadcf0ff.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
 
 # ... 나머지 dinov3_vit7b16_pretrain_sat493m-a6675841.pth .pth파일 이동
 ```
-
-
 
 
 ### 2-4) 데이터셋 준비
@@ -108,18 +147,28 @@ Move-Item -Path C:\a\b\c\d\dinov3_vitl16_pretrain_sat493m-eadcf0ff.pth -Destinat
 
 ```powershell
 # dinov3_data 디렉토리 생성.
-New-Item -ItemType Directory -Path C:\a\b\c\dinov3_data
+New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_data
 ```
+`dinov3_data` 경로에 활용할 데이터셋을 저장한다.
 
+```powershell
+<Your>\<Project>\<Directory>\dinov3_data
+  └─<Your>\<Project>\<Directory>\dinov3_data\250912143954_450
+      └─<Your>\<Project>\<Directory>\dinov3_data\250912143954_450\250912143954_450_0001.jpg
+```
 
 ### 2-5) 결과 저장 생성
 
+본 프로젝트 `dinov3_main`에서 실행한 후 도출한 결과들을 저장할 디렉토리 `dinov3_exports`를 생성한다
+
+```powershell
+# dinov3_exports 디렉토리 생성.
+New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_exports
+```
 
 ---
 
 
-
----
 
 ## 2) `.env` 설정
 
@@ -127,11 +176,11 @@ New-Item -ItemType Directory -Path C:\a\b\c\dinov3_data
 
 | 변수 | 설명 | 예시 (Windows) |
 | --- | --- | --- |
-| `PROJECT_HOST` | `project/` 폴더 실경로 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_docker\project` |
-| `CODE_HOST` | dinov3 원본 리포지터리 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_main` |
+| `PROJECT_HOST` | `project/` 폴더 실경로 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_main\project` |
+| `CODE_HOST` | dinov3 원본 리포지터리 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_src` |
 | `WEIGHTS_HOST` | `.pth` 가중치 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_weights` |
-| `DATASET_HOST` | 이미지 데이터셋 루트 | `D:\GoogleDrive\KNK_Lab\_Datasets\shinsung_data` |
-| `EXPORT_HOST` | JSON/PNG 결과 저장 루트 | `D:\GoogleDrive\KNK_Lab\Exports` |
+| `DATASET_HOST` | 이미지 데이터셋 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_data` |
+| `EXPORT_HOST` | JSON/PNG 결과 저장 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_exports` |
 | `REPO_DIR` | 컨테이너 내부 dinov3 마운트 위치 | `/workspace/dinov3` |
 | `IMG_ROOT` | 컨테이너 내부 데이터셋 위치 | `/opt/datasets` |
 | `EXPORT_DIR` | 컨테이너 내부 임베딩/결과 루트 | `/exports/dinov3_embeds` |
@@ -198,7 +247,7 @@ docker compose exec pair run --weights vitl16 -a 400.0200 -b 200.0200
   | `--keypoint-th` | 0.015 | 토큰 L2 임계값 |
   | `--line-th` | 0.2 | 최고 유사도 대비 상대 임계값 |
 
-- 결과 JSON은 `/exports/pair_match/<weight>_<ALT>_<FRAME>/…` 에 저장.
+- 결과 JSON은 _`<Your>\<Project>\<Directory>\dinov3_exports/pair_match/<weight>_<ALT>_<FRAME>/…`_ 에 저장.
 
 ---
 

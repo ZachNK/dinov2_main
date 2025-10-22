@@ -34,7 +34,7 @@ services:
       - ${CODE_HOST}:/workspace/dinov3
       # 가중치/데이터/출력
       - ${WEIGHTS_HOST}:/opt/weights:ro
-      - ${DATASET_HOST}:/opt/datasets
+      - ${DATASET_HOST}:/opt/datasets:ro
       - ${EXPORT_HOST}:/exports
     command: bash -lc "sleep infinity"
     stdin_open: true
