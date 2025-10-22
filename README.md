@@ -343,7 +343,6 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
     <img src="docs/figs/matching_run option example.png" width="75%">
   </p>
   <p align="center"><em>이미지 매칭 실행 및 json, npy 저장 완료</em></p>
-
   
 
 - `-a`, `-b`: ALT.FRAME 형식 (예: `400.0001`) \
@@ -379,6 +378,12 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 
 - 결과 JSON은 _`<Your>\<Project>\<Directory>\dinov3_exports/pair_match/<weight>_<ALT>_<FRAME>/…`_ 에 저장.
 
+  <p align="center">
+    <img src="docs/examples/vitl16_400_0100/JSON_vitl16_400.0001_200.0001.png" width="75%">
+  </p>
+  <p align="center"><em>이미지 매칭 실행 후 json파일 결과 예시</em></p>
+
+
 ---
 
 ## 4) 시각화 (`vis`)
@@ -393,6 +398,8 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
     <img src="docs/figs/matching_visualize option example.png" width="80%">
     <figcaption align="center">위의 경우 1을 입력하여 vitl16_400_0001에 있는 json파일을 일괄로 시각화 실행</figcaption>
   </p>
+
+
 
 주요 옵션
 | 옵션 | 기본값 (환경변수) | 설명 |
@@ -420,6 +427,11 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 
 필요 시 결과 폴더를 탐색기에서 바로 열어 확인.
 
+
+  <p align="center">
+    <img src="docs/examples/vitl16_400_0100/RESULT_vitl16_400.0001_200.0001.png" width="80%">
+    <figcaption align="center">시각화 결과 (vitl16, 400_0001과 200_0001 매칭)</figcaption>
+  </p>
 ---
 
 ## 6) 트러블슈팅
