@@ -396,8 +396,8 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
   * 아래와 같이 대화형으로 선택 가능:
   <p align="center">
     <img src="docs/figs/matching_visualize option example.png" width="80%">
-    <figcaption align="center">위의 경우 1을 입력하여 vitl16_400_0001에 있는 json파일을 일괄로 시각화 실행</figcaption>
   </p>
+  <p align="center"><em>위의 경우 1을 입력하여 vitl16_400_0001에 있는 json파일을 일괄로 시각화 실행</em></p>
 
 
 
@@ -429,9 +429,9 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 
 
   <p align="center">
-    <img src="docs/examples/vitl16_400_0100/RESULT_vitl16_400.0001_200.0001.png" width="80%">
-    <figcaption align="center">시각화 결과 (vitl16, 400_0001과 200_0001 매칭)</figcaption>
+    <img src="docs/examples/vitl16_400_0100/RESULT_vitl16_400.0001_200.0001.png" width="75%">
   </p>
+  <p align="center"><em>시각화 결과 (vitl16, 400_0001과 200_0001 매칭)</em></p>
 ---
 
 ## 6) 트러블슈팅
