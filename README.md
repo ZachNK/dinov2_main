@@ -40,11 +40,11 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
 - Docker Desktop 설치: 
   > https://www.docker.com/
 
-<figure style="text-align:center;">
+<p align="center">
   <img src="docs/figs/docker_desktop_main.png" width = "75%"/>
-  <figcaption align="center">(출력결과 9: AMD64 설치, 출력결과 12: ARM64 설치)</figcaption>
-  <figcaption align="center">대부분 Desktop/노트북은 x64(AMD64), Intel CPU사용하더라도 AMD64를 받는것이 일반적</figcaption>
-</figure>
+</p>
+<p align="center"><em>(출력결과 9: AMD64 설치, 출력결과 12: ARM64 설치)</em></p>
+<p align="center"><em>대부분 Desktop/노트북은 x64(AMD64), Intel CPU사용하더라도 AMD64를 받는것이 일반적</em></p>
 
 
 ### 0-2) Docker Desktop 설치 후 기본 설정
@@ -64,10 +64,10 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
   ```
 
 - 그리고 Docker Desktop에 Docker Desktop Settings → Resources → File Sharing 에서 프로젝트/데이터 폴더가 공유되어 있는지 확인
-<figure style="text-align:center;">
+<p align="center">
   <img src="docs/figs/docker_desktop_filesharing.png" width="75%">
-  <figcaption>File Sharing에서 프로젝트/데이터 폴더가 공유되어 있는지 확인 (본 프로젝트는 D:에 공유됨)</figcaption>
-</figure>
+</p>
+<p align="center"><em>File Sharing에서 프로젝트/데이터 폴더가 공유되어 있는지 확인 (본 프로젝트는 D:에 공유됨)</em></p>
 
 
 ### 0-4) 환경 변수 파일 작성
@@ -339,10 +339,10 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
   * `-b 200.0001`: B이미지는 `200`고도의 `1`번 이미지를 서로 매칭 실행 
   
   
-  <figure style="text-align:center;">
+  <p align="center">
     <img src="docs/figs/matching_run option example.png" width="75%">
-    <figcaption align="center">이미지 매칭 실행 및 json, npy 저장 완료</figcaption>
-  </figure>
+  </p>
+  <p align="center"><em>이미지 매칭 실행 및 json, npy 저장 완료</em></p>
 
   
 
