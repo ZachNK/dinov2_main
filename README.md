@@ -332,7 +332,21 @@ docker compose exec matching nvidia-smi
 docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 ```
 
-- `-a`, `-b`: ALT.FRAME 형식 (예: `400.0200`) \
+* 아래와 같이 실행 및 결과:
+  * `-w vitl16`: 아래 예시의 경우, `ViT-L/16` 가중치로 활용
+  * `-e`: 매칭 임베딩 결과 저장
+  * `-a 400.0001`: A이미지는 `400`고도의 `1`번 이미지와
+  * `-b 200.0001`: B이미지는 `200`고도의 `1`번 이미지를 서로 매칭 실행 
+  
+  
+  <p align="center">
+    <img src="docs/figs/matching_run option example.png" width="75%">
+    <figcaption align="center">이미지 매칭 실행 및 json, npy 저장 완료</figcaption>
+  </p>
+
+  
+
+- `-a`, `-b`: ALT.FRAME 형식 (예: `400.0001`) \
   지정하지 않으면 모든 조합을 순회.
 
 - `--weights`, 혹은 `-w`: 사용 가중치 변수\
@@ -369,10 +383,16 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 
 ## 4) 시각화 (`vis`)
 
-```powershell
-# 대화형 선택 
-docker compose exec pair vis
-```
+- 대화형으로 이미지 폴더를 직접 선택해 시각화
+  ```powershell
+  # 대화형 선택 
+  docker compose exec matching vis
+  ```
+  * 아래와 같이 대화형으로 선택 가능:
+  <p align="center">
+    <img src="docs/figs/matching_visualize option example.png" width="80%">
+    <figcaption align="center">위의 경우 1을 입력하여 vitl16_400_0001에 있는 json파일을 일괄로 시각화 실행</figcaption>
+  </p>
 
 주요 옵션
 | 옵션 | 기본값 (환경변수) | 설명 |
