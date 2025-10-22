@@ -185,12 +185,12 @@ dinov3_main/
   > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_exports`
 
 
-### 1-1) DINOv3 원본 저장
+### 1-1) 프로젝트 저장
 
 
 - 작업하고자 하는 디렉토리(_`<Your>\<Project>\<Directory>`_)에 먼저 접근하여 본 프로젝트를 `dinov3_main` 하위 경로에 clone한다. 
 
-  ```bash
+  ```Bash
   git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov3_main
   ```
 
@@ -199,7 +199,7 @@ dinov3_main/
 
 - 작업할 경로 (_`<Your>\<Project>\<Directory>`_)에서 `dinov3_src` 하위 경로에 DINOv3 원본을 저장한다.
 
-  ```bash
+  ```Bash
   git clone https://github.com/facebookresearch/dinov3.git .\dinov3_src
   ```
 
@@ -371,7 +371,7 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 - 결과 JSON은 _`<Your>\<Project>\<Directory>\dinov3_exports/pair_match/<weight>_<ALT>_<FRAME>/…`_ 에 저장.
 
   <p align="center">
-    <img src="docs/examples/vitl16_400_0100/JSON_vitl16_400.0001_200.0001.png" width="75%">
+    <img src="docs/examples/vitl16_400_0001/JSON_vitl16_400.0001_200.0001.png" width="75%">
   </p>
   <p align="center"><em>이미지 매칭 실행 후 json파일 결과 예시</em></p>
 
@@ -421,7 +421,7 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 
 
   <p align="center">
-    <img src="docs/examples/vitl16_400_0100/RESULT_vitl16_400.0001_200.0001.png" width="75%">
+    <img src="docs/examples/vitl16_400_0001/RESULT_vitl16_400.0001_200.0001.png" width="75%">
   </p>
   <p align="center"><em>시각화 결과 (vitl16, 400_0001과 200_0001 매칭)</em></p>
 ---
