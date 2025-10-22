@@ -7,7 +7,7 @@ Docker Desktop 위에서 DINOv3 기반 이미지 매칭과 시각화를 수행�
 
 ## 0) 요구 사항
 
-- **Windows 11** + **Docker Desktop**  
+- **Windows 11** + **Docker Desktop (v.4.46.0 이상)**  
   - Docker Desktop 환경에서 동작.  
   - Docker Desktop Settings → Resources → File Sharing 에서 프로젝트/데이터 폴더가 공유되어 있는지 확인.
 - **NVIDIA GPU & 최신 드라이버** (CUDA 12.x 호환)
@@ -44,6 +44,80 @@ dinov3_docker/
   예시 위치: `D:\GoogleDrive\KNK_Lab\_Datasets\shinsung_data`
 - **결과 저장 디렉터리**  
   예시 위치: `D:\GoogleDrive\KNK_Lab\Exports`
+
+### 1-1) DINOv3 원본 저장
+
+작업하고자 하는 디렉토리에 먼저 접근하여 본 프로젝트를 `dinov3_docker` 하위 경로에 clone한다. 
+
+```powershell
+git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov3_docker
+```
+
+### 1-2) DINOv3 원본 저장
+
+(작업할 디렉토리: `C:\a\b\c\d` 라고 가정)\
+작업할 경로 (`C:\a\b\c\d`)에 DINOv3 원본을 저장한다.
+
+```powershell
+git clone https://github.com/facebookresearch/dinov3.git .\dinov3_main
+```
+
+### 1-3) 백본 백본 준비 
+
+그리고 상위 경로에 `dinov3_weights` 라는 디렉토리로 백본 데이터를 준비 한다.\
+https://github.com/facebookresearch/dinov3에 게시된 가중치를 `dinov3_weights`이라는 폴더를 생성하고 바로 저장한다.\
+만약 방금 DINOv3원본을 clone한 디렉토리가 `C:\a\b\c\d\dinov3_main`이라 가정한다면: 
+
+```powershell
+# dinov3_weights 디렉토리 생성. 해당 경로에 ViT-S/16 distilled, ConvNeXt Tiny, ... , ViT-7B/16 를 저장
+New-Item -ItemType Directory -Path C:\a\b\c\d\dinov3_weights -ErrorAction SilentlyContinue
+```
+
+```powershell
+# dinov3_weights에 디렉토리 추가 생성
+New-Item -ItemType Directory -Path C:\a\b\c\d\dinov3_weights\01_ViT_LVD-1689M -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path C:\a\b\c\d\dinov3_weights\02_ConvNeXT_LVD-1689M -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path C:\a\b\c\d\dinov3_weights\03_ViT_SAT-493M -ErrorAction SilentlyContinue
+```
+
+```powershell
+# dinov3_weights 디렉토리에 저장된 .pth 파일들 데이터셋별로 정리
+
+# dinov3_weights\01_ViT_LVD-1689M에 파일 이동 (ViT-S/16 distilled 이동할 때)
+Move-Item -Path C:\a\b\c\d\dinov3_vits16_pretrain_lvd1689m-08c60483.pth -Destination C:\a\b\c\d\dinov3_weights\01_ViT_LVD-1689M
+
+# ... 나머지 ViT-S+/16 distilled, ViT-B/16 distilled 등 .pth파일 이동
+
+# dinov3_weights\02_ConvNeXT_LVD-1689M에 파일 이동 (ConvNeXt Tiny 이동할 때)
+Move-Item -Path C:\a\b\c\d\dinov3_convnext_tiny_pretrain_lvd1689m-21b726bb.pth -Destination C:\a\b\c\d\dinov3_weights\01_ViT_LVD-1689M
+
+# ... 나머지 ConvNeXt Small, ConvNeXt Base 등 .pth파일 이동
+
+# dinov3_weights\03_ViT_SAT-493M에 파일 이동 (ViT-L/16 distilled 이동할 때)
+Move-Item -Path C:\a\b\c\d\dinov3_vitl16_pretrain_sat493m-eadcf0ff.pth -Destination C:\a\b\c\d\dinov3_weights\01_ViT_LVD-1689M
+
+# ... 나머지 dinov3_vit7b16_pretrain_sat493m-a6675841.pth .pth파일 이동
+```
+
+
+
+
+### 2-4) 데이터셋 준비
+
+마찬가지로 데이터셋도 추가 디렉토리를 생성한다.
+
+```powershell
+# dinov3_data 디렉토리 생성.
+New-Item -ItemType Directory -Path C:\a\b\c\dinov3_data
+```
+
+
+### 2-5) 결과 저장 생성
+
+
+---
+
+
 
 ---
 
@@ -131,12 +205,9 @@ docker compose exec pair run --weights vitl16 -a 400.0200 -b 200.0200
 ## 5) 시각화 (`vis`)
 
 ```powershell
-# 대화형 선택 (TTY 필요)
-docker compose exec -it pair vis
+# 대화형 선택 
+docker compose exec pair vis
 
-# 또는 바로 경로 지정
-docker compose exec pair vis --focus vitl16_400_0200
-```
 
 주요 옵션
 | 옵션 | 기본값 (환경변수) | 설명 |

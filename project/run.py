@@ -30,6 +30,8 @@ from imatch.tfms import build_transform
 
 
 def main():
+    
+    ## === 이미지 목록 스캔, 가중치 선택, 전처리 구축 등 초기화 ===
     p = argparse.ArgumentParser(description="DINOv3 Matching Batch Runner")
     # 이미지 선택
     p.add_argument("-a","--pair-a", help="ALT.FRAME 또는 ALT (생략시 전체)")
@@ -77,12 +79,22 @@ def main():
     # 전처리
     tfm = build_transform(args.image_size)
 
+
+    ## === ※ 이미지 쌍 X 가중치 별 매칭 (DINOv3 아키텍쳐 고유 로직) ※ ===
     # 실행
     with torch.inference_mode(), torch.amp.autocast("cuda"):
         for w_alias, hub_name, ckpt in weights:
             print(f"[weight] {w_alias}  hub={hub_name}  ckpt={ckpt}")
             model, _ = load_model(REPO_DIR, args.device, hub_name, ckpt)
 
+            # 워밍업 (extract_global_feature, extract_patch_tokens 더미 호출)
+            if not getattr(model, "_imatch_warmed_up", False):
+                dummy = torch.zeros(1, 3, args.image_size, args.image_size, device=args.device)
+                _ = extract_global_feature(model, dummy, args.device)
+                _ = extract_patch_tokens(model, dummy, args.device)
+                model._imatch_warmed_up = True
+
+            # 이미지 쌍별 매칭 실행
             for a_key, b_key in pairs:
                 pA, pB = key2path[a_key], key2path[b_key]
                 xa = tfm(load_image_tensor(pA)).unsqueeze(0)
@@ -104,10 +116,13 @@ def main():
                     ia_map = torch.arange(orig_n_a, device=pa.device, dtype=torch.long)
                     ib_map = torch.arange(orig_n_b, device=pb.device, dtype=torch.long)
 
+    ## === DINO가 출력한 패치 임베딩을 이용한 후처리 단계 (고급 설정 적용 및 매칭 계산) ===
+                    # L2 기반 키포인트 임계값 필터링
                     if args.keypoint_th > 0.0:
                         pa, ia_map = apply_keypoint_threshold(pa, ia_map, args.keypoint_th)
                         pb, ib_map = apply_keypoint_threshold(pb, ib_map, args.keypoint_th)
-
+                    
+                    # 균등 서브샘플링
                     if args.max_features:
                         pa, subs_a = subsample_tokens(pa, args.max_features)
                         subs_a = subs_a.to(ia_map.device, dtype=torch.long)
@@ -117,6 +132,7 @@ def main():
                         subs_b = subs_b.to(ib_map.device, dtype=torch.long)
                         ib_map = ib_map.index_select(0, subs_b)
 
+                    # 상호 k-NN 매칭 (k=1)
                     pa_np = pa.detach().cpu().float().numpy()
                     pb_np = pb.detach().cpu().float().numpy()
 
@@ -141,17 +157,20 @@ def main():
                         ib = ib[keep]
                         sim = sim[keep]
 
+                    # 1:1 매칭 강제 적용
                     ia, ib, sim = enforce_unique_matches(ia, ib, sim)
 
                     ia_map_cpu = ia_map.detach().cpu()
                     ib_map_cpu = ib_map.detach().cpu()
-
+                    
+                    # 원본 인덱스 복원
                     ia_full = ia_map_cpu[torch.from_numpy(ia)] if ia.size > 0 else torch.empty(0, dtype=torch.long)
                     ib_full = ib_map_cpu[torch.from_numpy(ib)] if ib.size > 0 else torch.empty(0, dtype=torch.long)
 
                     g_a = grid_side(orig_n_a)
                     g_b = grid_side(orig_n_b)
 
+    ## === 결과 저장: 지정된 폴더 구조로 JSON 메타데이터 생성 ===
                     patch = dict(
                         n_a=orig_n_a,
                         n_b=orig_n_b,
