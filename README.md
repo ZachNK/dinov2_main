@@ -41,7 +41,7 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
   > https://www.docker.com/
 
 <p align="center">
-  <img src="docs/examples/docker_main.png" width = "50%"/>
+  <img src="docs/figs/docker_desktop_main.png" width = "75%"/>
   <figcaption align="center">(출력결과 9: AMD64 설치, 출력결과 12: ARM64 설치)</figcaption>
   <figcaption align="center">대부분 Desktop/노트북은 x64(AMD64), Intel CPU사용하더라도 AMD64를 받는것이 일반적</figcaption>
 </p>
@@ -51,10 +51,108 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
 - Docker Desktop 실행 → 리소스 제한 (CPU/Memory) → WSL2 (Windows) 연동 등 환경 설정 확인
 - 프로젝트에 필요한 GPU 관련 드라이버/Container Runtime(NVIDIA Container toolkit) 설치
 
+### 0-3) 프로젝트 디렉터리 준비
+- 로컬 경로를 미리 생성한다.\
+  작업할 디렉토리: `<Your>\<Project>\<Directory>` 로 가정할 때,
+  
+  ```bash
+  mkdir <Your>\<Project>\<Directory>\dinov3_main      # 본 프로젝트 경로
+  mkdir <Your>\<Project>\<Directory>\dinov3_src       # DINOv3
+  mkdir <Your>\<Project>\<Directory>\dinov3_weights   # DINOv3에서 제공한 백본 경로
+  mkdir <Your>\<Project>\<Directory>\dinov3_data      # 활용할 입력 데이터셋 경로
+  mkdir <Your>\<Project>\<Directory>\dinov3_exports   # 본 프로젝트의 출력 저장 경로
+  ```
+
+- 그리고 Docker Desktop에 Docker Desktop Settings → Resources → File Sharing 에서 프로젝트/데이터 폴더가 공유되어 있는지 확인
+<p align="center">
+  <img src="docs/figs/docker_desktop_filesharing.png" width="75%">
+  <figcaption align="center">File Sharing 에서 프로젝트/데이터 폴더가 공유되어 있는지 확인 (본 프로젝트는 D: 에 공유됨)</figcaption>
+</p>
+
+
+### 0-4) 환경 변수 파일 작성
+- `.env.example` 파일을 이용하여 `.env` 파일을 생성해야 한다.
+- .env.example 파일을 .env 파일명으로 복사:
+  ```bash
+  cp .env.example .env
+  ```
+
+- `.env`파일을 연다.
+- 건드려야 할 곳은 `호스트 경로` 부분 5군데이다. 나머지는 건들지 않는 곳.
+
+  `.env`에서 자신의 환경에 맞게 수정. 모든 경로는 **Windows 경로**로 작성.
+
+  | 변수 | 설명 | 예시 (Windows) |
+  | --- | --- | --- |
+  | `PROJECT_HOST` | `project/` 폴더 실경로 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_main\project` |
+  | `CODE_HOST` | dinov3 원본 리포지터리 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_src` |
+  | `WEIGHTS_HOST` | `.pth` 가중치 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_weights` |
+  | `DATASET_HOST` | 이미지 데이터셋 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_data` |
+  | `EXPORT_HOST` | JSON/PNG 결과 저장 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_exports` |
+
+
+### 0-5) Docker Compose 빌드 단계
+- 본격적으로 docker로 사용하기에 앞서 프로젝트 루트에서  `docker compose build` 실행.
+  ```powershell
+  docker compose build
+  ```
+  
+  * 그러면 빌드 하면서 마지막에 
+  ```powershell
+  [+] Building 1/1
+  ✔ dinov3:cuda12.1-py310  Built
+  ```
+
+### 0-6) Docker 컨테이너 실행 및 확인
+- Docker 컨테이너 실행:
+  ```powershell
+  docker compose up -d
+  ```
+  
+  * 그러면 컨테이너가 실행 준비 완료 되었다는 것을 다음과 같이 나온다:
+  ```powershell
+  [+] Running 2/2
+  ✔ Network dinov3_main_default  Created                   0.0s 
+  ✔ Container dinov3-matching    Started                   0.5s 
+  ```
+
+- 컨테이너 실행 하는지 확인:
+  ```powershell
+  docker compose ps
+  ```
+
+  * 그려면 아래와 같이 나옴:
+  ```bash
+  NAME              IMAGE                   COMMAND                   SERVICE    CREATED         STATUS         PORTS
+  dinov3-matching   dinov3:cuda12.1-py310   "bash -lc 'sleep inf…"   matching   8 seconds ago   Up 7 seconds
+  ```
+
+### 0-7) Docker 초기 진입/테스트 
+- 컨테이너 쉘 진입하여 기본 매칭/시각화 명령을 한번씩 수행하고, 결과 파일이 HOST경로에 생성되는지 확인:
+  ```powershell
+  docker compose exec matching bash
+  ```
+  
+  * 그러면 아래와 같이 나오면 컨테이너 쉘 진입 확인 완료
+  ```powershell
+  root@{...}:/workspace/project#
+  ```
+  * `exit` 명령어로 쉘 나오기
+  ```powershell
+  root@{...}:/workspace/project# exit
+  ```
+
+- GPU 인식 체크로 드라이버/Toolkit 연동 상태 확인
+  ```powershell
+  docker compose exec matching nvidia-smi
+  ```
+  * `NVIDIA-SMI ~ Driver Version ~` 등 뜨면 정상적으로 Toolkit 연동
 
 ---
 
 ## 1) 저장소 구조 & 필수 리소스
+
+- 아래와 같이 `dinov3_main` 의 디렉터리는 다음과 같이 있어야 한다.
 
 ```bash
 dinov3_main/
@@ -65,25 +163,26 @@ dinov3_main/
 ├─ Dockerfile
 ├─ docker-compose.yml
 ├─ requirements.txt
+├─ .env
 ├─ .env.example
 └─ README.md
 ```
 
-필수 리소스 (작업할 디렉토리: _`<Your>\<Project>\<Directory>`_ 라고 가정)
+필수 리소스 (작업할 디렉토리: `<Your>\<Project>\<Directory>` 라고 가정)
 - **본 실행 프로젝트**  
-  _예시 위치: `<Your>\<Project>\<Directory>\dinov3_main`_
+  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_main`
 
 - **facebookresearch/dinov3** 저장소 (코드 참조용)  
-  _예시 위치: `<Your>\<Project>\<Directory>\dinov3_src`_
+  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_src`
 
 - **사전 학습 가중치(.pth)**  
-  _예시 위치: `<Your>\<Project>\<Directory>\dinov3_weights`_
+  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_weights`
 
 - **매칭 대상 이미지 데이터셋**  
-  _예시 위치: `<Your>\<Project>\<Directory>\dinov3_data`_
+  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_data`
 
 - **결과 저장 디렉터리**  
-  _예시 위치: `<Your>\<Project>\<Directory>\Exports`_
+  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_exports`
 
 
 ### 1-1) DINOv3 원본 저장
@@ -141,59 +240,74 @@ Move-Item -Path <Your>\<Project>\<Directory>\dinov3_vitl16_pretrain_sat493m-eadc
 ```
 
 
-### 2-4) 데이터셋 준비
+### 1-4) 데이터셋 준비
 
-마찬가지로 데이터셋도 추가 디렉토리를 생성한다.
+- 마찬가지로 데이터셋도 추가 디렉토리를 생성한다.
 
-```powershell
-# dinov3_data 디렉토리 생성.
-New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_data
-```
-`dinov3_data` 경로에 활용할 데이터셋을 저장한다.
+  ```powershell
+  # dinov3_data 디렉토리 생성.
+  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_data
+  ```
 
-```bash
-<Your>\<Project>\<Directory>\dinov3_data
-  └─<Your>\<Project>\<Directory>\dinov3_data\250912143954_450
-      └─<Your>\<Project>\<Directory>\dinov3_data\250912143954_450\250912143954_450_0001.jpg
-```
+- `dinov3_data` 경로에 활용할 데이터셋을 저장한다.\
+  아래와 같이 일관된 경로로 수정해야 한다.\
+  `<ID>`는 세부 데이터셋 명이고, `<ALT>`는 항공 사진의 고도, `<FRAME>`은 해당 고도에서 촬영한 이미지 순번.
 
-### 2-5) 결과 저장 생성
+  ```bash
+  <Your>\<Project>\<Directory>\dinov3_data
+    └─<Your>\<Project>\<Directory>\dinov3_data\<ID>_<ALT>
+        └─<Your>\<Project>\<Directory>\dinov3_data\<ID>_<ALT>\<ID>_<ALT>_<FRAME>.jpg
+  ```
 
-본 프로젝트 `dinov3_main`에서 실행한 후 도출한 결과들을 저장할 디렉토리 `dinov3_exports`를 생성한다
+- 본 프로젝트의 데이터셋 경로 예시
+  ```bash
+  <Your>\<Project>\<Directory>\dinov3_data
+    └─<Your>\<Project>\<Directory>\dinov3_data\250912143954_450
+        └─<Your>\<Project>\<Directory>\dinov3_data\250912143954_450\250912143954_450_0001.jpg
+  ```
 
-```powershell
-# dinov3_exports 디렉토리 생성.
-New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_exports
-```
+### 1-5) 디렉토리 최종
+
+- 본 프로젝트 `dinov3_main`에서 실행한 후 도출한 결과들을 저장할 디렉토리 `dinov3_exports`에 생성한다.\
+  최종 경로 상태는 아래와 같다:
+
+  ```text
+  <Your>\<Project>\<Directory>\
+  ├─ dinov3_main\
+  │  ├─ project\
+  │  │  ├─ imatch\
+  │  │  ├─ run.py
+  │  │  └─ visualize.py
+  │  ├─ Dockerfile
+  │  ├─ docker-compose.yml
+  │  ├─ requirements.txt
+  │  ├─ .env
+  │  ├─ .env.example
+  │  └─ README.md
+  ├─ dinov3_src\                 # facebookresearch/dinov3 clone
+  │  ├─ .github
+  │  ├─ __pycache__  
+  │  ├─ dinov3  
+  │  ├─ notebooks  
+  │  ├─ .docstr.yaml
+  │  └─ hubconf.py 등...
+  ├─ dinov3_weights\
+  │  ├─ 01_ViT_LVD-1689M\
+  │  │  └─ *.pth
+  │  ├─ 02_ConvNeXT_LVD-1689M\
+  │  │  └─ *.pth
+  │  └─ … (필요한 가중치별 디렉터리)
+  ├─ dinov3_data\                # 매칭 대상 이미지/데이터셋
+  │  └─ … (프로젝트별 입력 데이터)
+  └─ dinov3_exports\             # 결과(JSON/PNG/npy) 저장
+    ├─ dinov3_embeds\
+    ├─ pair_match\
+    └─ pair_vis\
+  ```
 
 ---
 
-
-
-## 2) `.env` 설정
-
-`cp .env.example .env` 후 자신의 환경에 맞게 수정. 모든 경로는 **Windows 경로**로 작성.
-
-| 변수 | 설명 | 예시 (Windows) |
-| --- | --- | --- |
-| `PROJECT_HOST` | `project/` 폴더 실경로 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_main\project` |
-| `CODE_HOST` | dinov3 원본 리포지터리 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_src` |
-| `WEIGHTS_HOST` | `.pth` 가중치 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_weights` |
-| `DATASET_HOST` | 이미지 데이터셋 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_data` |
-| `EXPORT_HOST` | JSON/PNG 결과 저장 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_exports` |
-| `REPO_DIR` | 컨테이너 내부 dinov3 마운트 위치 | `/workspace/dinov3` |
-| `IMG_ROOT` | 컨테이너 내부 데이터셋 위치 | `/opt/datasets` |
-| `EXPORT_DIR` | 컨테이너 내부 임베딩/결과 루트 | `/exports/dinov3_embeds` |
-| `PAIR_VIZ_DIR` | 컨테이너 내부 시각화 결과 루트 | `/exports/pair_viz` |
-| `IMATCH_VIZ_ROOT` | 매칭 JSON 기본 위치 | `/exports/pair_match` |
-| `IMATCH_VIZ_OUT` | PNG 출력 위치 | `/exports/pair_viz` |
-| `TZ` | 컨테이너 시간대 | `Asia/Seoul` |
-| `DINOV3_BLOCK_NET` | torch.hub 다운로드 차단 (0/1) | `1` |
-
-
----
-
-## 3) Docker 이미지 빌드 & 컨테이너 실행
+## 2) Docker 이미지 빌드 & 컨테이너 실행
 
 ```powershell
 docker compose build        # Dockerfile 변경 시 재빌드
@@ -205,25 +319,26 @@ docker compose ps           # 상태 확인
 GPU가 인식되는지 확인:
 
 ```powershell
-docker compose exec pair nvidia-smi
+docker compose exec matching nvidia-smi
 ```
 
 ---
 
-## 4) 매칭 실행 (`run`)
+## 3) 매칭 실행 (`run`)
 
-컨테이너 래퍼 명령은 `run` 입니다.
+컨테이너 래퍼 명령은 `run` 
 
 ```powershell
-docker compose exec pair run --weights vitl16 -a 400.0200 -b 200.0200
+docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 ```
 
-- `-a`, `-b`: ALT.FRAME 형식 (예: `400.0200`)  
+- `-a`, `-b`: ALT.FRAME 형식 (예: `400.0200`) \
   지정하지 않으면 모든 조합을 순회.
-- `--weights`: 사용 모델 alias (여러 개 지정 가능)  
+
+- `--weights`, 혹은 `-w`: 사용 가중치 변수\
   `--group`, `--all-weights` 옵션도 지원.
 
-  | backbone | flag |
+  | backbone | parameter |
   | -------- | ---- |
   | `ViT-S/16 distilled` | `vits16` |    
   | `ViT-S+/16 distilled` |`vits16+` |   
@@ -252,7 +367,7 @@ docker compose exec pair run --weights vitl16 -a 400.0200 -b 200.0200
 
 ---
 
-## 5) 시각화 (`vis`)
+## 4) 시각화 (`vis`)
 
 ```powershell
 # 대화형 선택 
@@ -274,7 +389,7 @@ docker compose exec pair vis
 
 ---
 
-## 6) 결과 확인 & 경로 정리
+## 5) 결과 확인 & 경로 정리
 
 - JSON: `EXPORT_HOST\pair_match\<weight>_<ALT>_<FRAME>\*.json`
 - PNG: `EXPORT_HOST\pair_viz\<weight>_<ALT>_<FRAME>\*.png`
@@ -287,7 +402,7 @@ docker compose exec pair vis
 
 ---
 
-## 7) 트러블슈팅
+## 6) 트러블슈팅
 
 | 증상 | 확인 사항 & 해결 팁 |
 | --- | --- |

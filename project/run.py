@@ -55,6 +55,12 @@ def main():
     p.add_argument("--line-th", type=bounded_float(0.0, 1.0), default=0.2,
                    metavar="[0-1]", help="매칭 라인 보존 임계값 (line threshold)")
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    p.add_argument(
+        "-e",
+        "--save-emb",
+        action="store_true",
+        help="Save global/patch embeddings to EXPORT_DIR for each pair."
+    )
     args = p.parse_args()
 
     # 이미지 후보 스캔
@@ -79,6 +85,8 @@ def main():
     # 전처리
     tfm = build_transform(args.image_size)
 
+    if args.save_emb:
+        EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     ## === ※ 이미지 쌍 X 가중치 별 매칭 (DINOv3 아키텍쳐 고유 로직) ※ ===
     # 실행
@@ -86,6 +94,9 @@ def main():
         for w_alias, hub_name, ckpt in weights:
             print(f"[weight] {w_alias}  hub={hub_name}  ckpt={ckpt}")
             model, _ = load_model(REPO_DIR, args.device, hub_name, ckpt)
+            if args.save_emb:
+                # 가중치별 기본 임베딩 디렉터리 확보
+                (EXPORT_DIR / w_alias).mkdir(parents=True, exist_ok=True)
 
             # 워밍업 (extract_global_feature, extract_patch_tokens 더미 호출)
             if not getattr(model, "_imatch_warmed_up", False):
@@ -135,6 +146,15 @@ def main():
                     # 상호 k-NN 매칭 (k=1)
                     pa_np = pa.detach().cpu().float().numpy()
                     pb_np = pb.detach().cpu().float().numpy()
+
+                    if args.save_emb:
+                        embed_dir = EXPORT_DIR / w_alias / f"{a_key}_{b_key}"
+                        embed_dir.mkdir(parents=True, exist_ok=True)
+                        # 추적용으로 글로벌/패치 임베딩을 넘파이로 저장
+                        np.save(embed_dir / "global_a.npy", fa.detach().cpu().float().numpy())
+                        np.save(embed_dir / "global_b.npy", fb.detach().cpu().float().numpy())
+                        np.save(embed_dir / "patch_a.npy", pa_np)
+                        np.save(embed_dir / "patch_b.npy", pb_np)
 
                     topk_limit = int(args.max_features) if args.max_features else 400
                     ia, ib, sim = compute_matches_mutual_knn(

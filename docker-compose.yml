@@ -1,32 +1,42 @@
 services:
-  pair:
+  # DINOv3 기반 매칭 서비스
+  matching:
+    # 도커 이미지 빌드 설정
     build:
+        # 빌드 컨텍스트와 도커파일 경로 지정
         context: .
+        # 도커파일 경로
         dockerfile: Dockerfile
+    # 사용할 도커 이미지 이름
     image: ${IMAGE_NAME}
-    container_name: dinov3-pair
+    # 도커 컨테이너 이름
+    container_name: dinov3-matching
+    # GPU 사용 설정
     gpus: all
+    # 공유 메모리 크기 설정: 8GB (대규모 데이터 처리에 필요)
     shm_size: "8g"
+    # 작업 디렉토리 설정
     working_dir: /workspace/project
+    # 환경 변수 설정
     environment:
       TZ: ${TZ}
       # 내부 경로(코드에서 getenv로 읽음)
       REPO_DIR: ${REPO_DIR}
       IMG_ROOT: ${IMG_ROOT}
       EXPORT_DIR: ${EXPORT_DIR}
-      PAIR_VIZ_DIR: ${PAIR_VIZ_DIR}
+      VIS_DIR: ${VIS_DIR}
       DINOV3_BLOCK_NET: ${DINOV3_BLOCK_NET}
-      IMATCH_VIZ_ROOT: ${IMATCH_VIZ_ROOT}
-      IMATCH_VIZ_OUT: ${IMATCH_VIZ_OUT}
-      IMATCH_VIZ_MAX_LINES: ${IMATCH_VIZ_MAX_LINES}
-      IMATCH_VIZ_LINEWIDTH: ${IMATCH_VIZ_LINEWIDTH}
-      IMATCH_VIZ_DRAW_POINTS: ${IMATCH_VIZ_DRAW_POINTS}
-      IMATCH_VIZ_POINT_RADIUS: ${IMATCH_VIZ_POINT_RADIUS}
-      IMATCH_VIZ_ALPHA: ${IMATCH_VIZ_ALPHA}
-      IMATCH_VIZ_RANSAC: ${IMATCH_VIZ_RANSAC}
-      IMATCH_VIZ_REPROJ_TH: ${IMATCH_VIZ_REPROJ_TH}
-      IMATCH_VIZ_CONFIDENCE: ${IMATCH_VIZ_CONFIDENCE}
-      IMATCH_VIZ_ITERS: ${IMATCH_VIZ_ITERS}
+      VIS_ROOT: ${VIS_ROOT}
+      VIS_OUT: ${VIS_OUT}
+      VIS_MAX_LINES: ${VIS_MAX_LINES}
+      VIS_LINEWIDTH: ${VIS_LINEWIDTH}
+      VIS_DRAW_POINTS: ${VIS_DRAW_POINTS}
+      VIS_POINT_RADIUS: ${VIS_POINT_RADIUS}
+      VIS_ALPHA: ${VIS_ALPHA}
+      VIS_RANSAC: ${VIS_RANSAC}
+      VIS_REPROJ_TH: ${VIS_REPROJ_TH}
+      VIS_CONFIDENCE: ${VIS_CONFIDENCE}
+      VIS_ITERS: ${VIS_ITERS}
     volumes:
       # 프로젝트(이 답변 이후에 만들어질 run.py/visualize.py/imatch/ 포함)
       - ${PROJECT_HOST}:/workspace/project
