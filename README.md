@@ -56,7 +56,7 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
 
 ## 1) 저장소 구조 & 필수 리소스
 
-```
+```bash
 dinov3_main/
 ├─ project/
 │  ├─ imatch/           # 라이브러리 모듈
@@ -91,7 +91,7 @@ dinov3_main/
 
 작업하고자 하는 디렉토리(_`<Your>\<Project>\<Directory>`_)에 먼저 접근하여 본 프로젝트를 `dinov3_main` 하위 경로에 clone한다. 
 
-```powershell
+```bash
 git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov3_main
 ```
 
@@ -100,7 +100,7 @@ git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov3_main
 
 작업할 경로 (_`<Your>\<Project>\<Directory>`_)에서 `dinov3_src` 하위 경로에 DINOv3 원본을 저장한다.
 
-```powershell
+```bash
 git clone https://github.com/facebookresearch/dinov3.git .\dinov3_src
 ```
 
@@ -151,7 +151,7 @@ New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_data
 ```
 `dinov3_data` 경로에 활용할 데이터셋을 저장한다.
 
-```powershell
+```bash
 <Your>\<Project>\<Directory>\dinov3_data
   └─<Your>\<Project>\<Directory>\dinov3_data\250912143954_450
       └─<Your>\<Project>\<Directory>\dinov3_data\250912143954_450\250912143954_450_0001.jpg
@@ -203,6 +203,7 @@ docker compose ps           # 상태 확인
 
 변경 사항 적용 또는 `.env`를 수정한 뒤에는 `docker compose up -d --force-recreate`로 재생성.  
 GPU가 인식되는지 확인:
+
 ```powershell
 docker compose exec pair nvidia-smi
 ```
@@ -256,7 +257,7 @@ docker compose exec pair run --weights vitl16 -a 400.0200 -b 200.0200
 ```powershell
 # 대화형 선택 
 docker compose exec pair vis
-
+```
 
 주요 옵션
 | 옵션 | 기본값 (환경변수) | 설명 |
