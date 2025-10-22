@@ -72,7 +72,7 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
 
 ### 0-4) 환경 변수 파일 작성
 - `.env.example` 파일을 이용하여 `.env` 파일을 생성해야 한다.
-- .env.example 파일을 .env 파일명으로 복사:
+- `.env.example` 파일을 `.env` 파일명으로 복사:
   ```bash
   cp .env.example .env
   ```
@@ -170,87 +170,79 @@ dinov3_main/
 
 필수 리소스 (작업할 디렉토리: `<Your>\<Project>\<Directory>` 라고 가정)
 - **본 실행 프로젝트**  
-  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_main`
+  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_main`
 
 - **facebookresearch/dinov3** 저장소 (코드 참조용)  
-  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_src`
+  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_src`
 
 - **사전 학습 가중치(.pth)**  
-  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_weights`
+  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_weights`
 
 - **매칭 대상 이미지 데이터셋**  
-  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_data`
+  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_data`
 
 - **결과 저장 디렉터리**  
-  _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_exports`
+  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_exports`
 
 
 ### 1-1) DINOv3 원본 저장
 
 
-작업하고자 하는 디렉토리(_`<Your>\<Project>\<Directory>`_)에 먼저 접근하여 본 프로젝트를 `dinov3_main` 하위 경로에 clone한다. 
+- 작업하고자 하는 디렉토리(_`<Your>\<Project>\<Directory>`_)에 먼저 접근하여 본 프로젝트를 `dinov3_main` 하위 경로에 clone한다. 
 
-```bash
-git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov3_main
-```
+  ```bash
+  git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov3_main
+  ```
 
 ### 1-2) DINOv3 원본 저장
 
 
-작업할 경로 (_`<Your>\<Project>\<Directory>`_)에서 `dinov3_src` 하위 경로에 DINOv3 원본을 저장한다.
+- 작업할 경로 (_`<Your>\<Project>\<Directory>`_)에서 `dinov3_src` 하위 경로에 DINOv3 원본을 저장한다.
 
-```bash
-git clone https://github.com/facebookresearch/dinov3.git .\dinov3_src
-```
+  ```bash
+  git clone https://github.com/facebookresearch/dinov3.git .\dinov3_src
+  ```
 
 ### 1-3) 백본 백본 준비 
 
-_`<Your>\<Project>\<Directory>`_ 경로에 `dinov3_weights` 라는 디렉토리 생성하여 백본 데이터를 준비 한다.\
-https://github.com/facebookresearch/dinov3에 게시된 가중치를 `dinov3_weights`이라는 폴더를 생성하고 바로 저장한다.
+- _`<Your>\<Project>\<Directory>`_ 경로에 `dinov3_weights` 디렉토리에 백본 데이터를 준비 한다.\
+  https://github.com/facebookresearch/dinov3에 게시된 가중치를 `dinov3_weights`에 바로 저장한다.
 
-```powershell
-# dinov3_weights 디렉토리 생성. 해당 경로에 ViT-S/16 distilled, ConvNeXt Tiny, ... , ViT-7B/16 를 저장
-New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights -ErrorAction SilentlyContinue
-```
+- `dinov3_weights`에는 백본 종류별로 다시 디렉토리를 생성해야 한다:
+  ```bash
+  # dinov3_weights에 디렉토리 추가 생성
+  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\02_ConvNeXT_LVD-1689M -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\03_ViT_SAT-493M -ErrorAction SilentlyContinue
+  ```
 
-```powershell
-# dinov3_weights에 디렉토리 추가 생성
-New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\02_ConvNeXT_LVD-1689M -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\03_ViT_SAT-493M -ErrorAction SilentlyContinue
-```
+* 각 세부 디렉토리별로 pth 파일들을 이동한다 
+  (아래는 CLI명령 예시)
+  ```powershell
+  # dinov3_weights 디렉토리에 저장된 .pth 파일들 데이터셋별로 정리
 
-```powershell
-# dinov3_weights 디렉토리에 저장된 .pth 파일들 데이터셋별로 정리
+  # 1) dinov3_weights\01_ViT_LVD-1689M에 파일 이동 (ViT-S/16 distilled 이동할 때)
+  Move-Item -Path <Your>\<Project>\<Directory>\dinov3_vits16_pretrain_lvd1689m-08c60483.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
 
-# 1) dinov3_weights\01_ViT_LVD-1689M에 파일 이동 (ViT-S/16 distilled 이동할 때)
-Move-Item -Path <Your>\<Project>\<Directory>\dinov3_vits16_pretrain_lvd1689m-08c60483.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
+  # ... 나머지 ViT-S+/16 distilled, ViT-B/16 distilled 등 .pth파일 이동
 
-# ... 나머지 ViT-S+/16 distilled, ViT-B/16 distilled 등 .pth파일 이동
+  # 2) dinov3_weights\02_ConvNeXT_LVD-1689M에 파일 이동 (ConvNeXt Tiny 이동할 때)
+  Move-Item -Path <Your>\<Project>\<Directory>\dinov3_convnext_tiny_pretrain_lvd1689m-21b726bb.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
 
-# 2) dinov3_weights\02_ConvNeXT_LVD-1689M에 파일 이동 (ConvNeXt Tiny 이동할 때)
-Move-Item -Path <Your>\<Project>\<Directory>\dinov3_convnext_tiny_pretrain_lvd1689m-21b726bb.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
+  # ... 나머지 ConvNeXt Small, ConvNeXt Base 등 .pth파일 이동
 
-# ... 나머지 ConvNeXt Small, ConvNeXt Base 등 .pth파일 이동
+  # 3) dinov3_weights\03_ViT_SAT-493M에 파일 이동 (ViT-L/16 distilled 이동할 때)
+  Move-Item -Path <Your>\<Project>\<Directory>\dinov3_vitl16_pretrain_sat493m-eadcf0ff.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
 
-# 3) dinov3_weights\03_ViT_SAT-493M에 파일 이동 (ViT-L/16 distilled 이동할 때)
-Move-Item -Path <Your>\<Project>\<Directory>\dinov3_vitl16_pretrain_sat493m-eadcf0ff.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
-
-# ... 나머지 dinov3_vit7b16_pretrain_sat493m-a6675841.pth .pth파일 이동
-```
+  # ... 나머지 dinov3_vit7b16_pretrain_sat493m-a6675841.pth .pth파일 이동
+  ```
 
 
 ### 1-4) 데이터셋 준비
 
-- 마찬가지로 데이터셋도 추가 디렉토리를 생성한다.
+- 마찬가지로 데이터셋도 `dinov3_data` 디렉토리에 저장한다.
 
-  ```powershell
-  # dinov3_data 디렉토리 생성.
-  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_data
-  ```
-
-- `dinov3_data` 경로에 활용할 데이터셋을 저장한다.\
-  아래와 같이 일관된 경로로 수정해야 한다.\
+- `dinov3_data` 경로에 활용할 데이터셋은 아래와 같이 일관된 경로로 수정해야 한다.\
   `<ID>`는 세부 데이터셋 명이고, `<ALT>`는 항공 사진의 고도, `<FRAME>`은 해당 고도에서 촬영한 이미지 순번.
 
   ```bash
