@@ -85,7 +85,7 @@ def main():
     # 전처리
     tfm = build_transform(args.image_size)
 
-    if args.save_emb:
+    if args.save_embeds:
         EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     ## === ※ 이미지 쌍 X 가중치 별 매칭 (DINOv3 아키텍쳐 고유 로직) ※ ===
@@ -94,7 +94,7 @@ def main():
         for w_alias, hub_name, ckpt in weights:
             print(f"[weight] {w_alias}  hub={hub_name}  ckpt={ckpt}")
             model, _ = load_model(REPO_DIR, args.device, hub_name, ckpt)
-            if args.save_emb:
+            if args.save_embeds:
                 # 가중치별 기본 임베딩 디렉터리 확보
                 (EXPORT_DIR / w_alias).mkdir(parents=True, exist_ok=True)
 
@@ -147,7 +147,7 @@ def main():
                     pa_np = pa.detach().cpu().float().numpy()
                     pb_np = pb.detach().cpu().float().numpy()
 
-                    if args.save_emb:
+                    if args.save_embeds:
                         embed_dir = EXPORT_DIR / w_alias / f"{a_key}_{b_key}"
                         embed_dir.mkdir(parents=True, exist_ok=True)
                         # 추적용으로 글로벌/패치 임베딩을 넘파이로 저장
