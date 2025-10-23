@@ -275,6 +275,7 @@ dinov3_main/
   │  ├─ project\
   │  │  ├─ imatch\
   │  │  ├─ run.py
+  │  │  ├─ run2.py
   │  │  └─ visualize.py
   │  ├─ Dockerfile
   │  ├─ docker-compose.yml
@@ -381,6 +382,49 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
   </p>
   <p align="center"><em>이미지 매칭 실행 후 json파일 결과 예시</em></p>
 
+### 3-1) 수정 버전 매칭 실행 (`run2`)
+
+
+- `AutoImageProcessor/AutoModel`쓰는 방법으로 실행
+
+  * 먼저 HF 토큰 확인: Hugging Face에서 DINOv3 모델은 게이트드라 로그인이 필요.
+    토큰 발급닥기 이전에 해당 Hugging Face 모델( facebook/dinov3-convnext-tiny-pretrain-lvd1689m 등)이 gated 모델이므로 접근 권한부터 부여 받아야 함.
+
+  * Hugging Face에서 모델 페이지(https://huggingface.co/facebook/dinov3-convnext-tiny-pretrain-lvd1689m 등)를 열고, 로그인한 뒤, 접근 요청해 승인을 받아야 함.
+
+  <p align="center">
+    <img src="docs/figs/hf_facebook_weights_auth.png" width="75%">
+  </p>
+  <p align="center"><em>해당 백본 모델 접근 권한 승인을 위한 신청</em></p>
+
+  * 그리고 나서, 요청이 승인될 때까지 기다리면, 모델 가중치 정상적으로 실행 가능.
+
+  <p align="center">
+    <img src="docs/figs/Gated Reops Status (pending).png" width="75%">
+  </p>
+  <p align="center"><em>백본 모델 접근 권한 승인 요청중</em></p>
+
+- 승인이 완료된 것을 확인 후 명령 실행:
+
+  <p align="center">
+    <img src="docs/figs/Gated Reops Status (accepted).png" width="75%">
+  </p>
+  <p align="center"><em>백본 모델 접근 권한 승인 요청 완료</em></p>
+
+  ```powershell
+  docker compose exec matching bash -lc "HF_TOKEN=(token) python run2.py -w (weights) -a (a 이미지) -b (b 이미지)"
+  ```
+
+  <p align="center">
+    <img src="docs/figs/matching_run2 option example.png" width="75%">
+  </p>
+  <p align="center"><em>이미지 매칭 (`run2`) 실행 및 json, npy저장 완료</em></p>
+
+  <p align="center">
+    <img src="docs/examples/cxTiny_400_0001/JSON_cxTiny_400.0001_200.0001.png" width="75%">
+  </p>
+  <p align="center"><em>이미지 매칭 (`run2`) 실행 후 json파일 결과 예시</em></p>
+
 
 ---
 
@@ -393,7 +437,7 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
   ```
   * 아래와 같이 대화형으로 선택 가능:
   <p align="center">
-    <img src="docs/figs/matching_visualize option example.png" width="80%">
+    <img src="docs/figs/matching_visualize option example.png" width="50%">
   </p>
   <p align="center"><em>위의 경우 1을 입력하여 vitl16_400_0001에 있는 json파일을 일괄로 시각화 실행</em></p>
 
@@ -423,13 +467,21 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
   - `advanced_settings`: 사용한 매칭/필터 파라미터 (`matching_mode`는 현재 `mutual_knn_k1_unique`)
   - `patch`: 선택된 패치 정보 (`idx_a`, `idx_b`, `similarities` 등)
 
-필요 시 결과 폴더를 탐색기에서 바로 열어 확인.
+- 필요 시 결과 폴더를 탐색기에서 바로 열어 확인.
 
 
   <p align="center">
     <img src="docs/examples/vitl16_400_0001/RESULT_vitl16_400.0001_200.0001.png" width="75%">
   </p>
-  <p align="center"><em>시각화 결과 (vitl16, 400_0001과 200_0001 매칭)</em></p>
+  <p align="center"><em>시각화 결과 (ViT-L/16 distilled, 400_0001과 200_0001 매칭)</em></p>
+
+
+
+-  `run2` 실행 결과:
+  <p align="center">
+    <img src="docs/examples/cxTiny_400_0001/RESULT_cxTiny_400.0001_200.0001.png" width="75%">
+  </p>
+  <p align="center"><em>시각화 결과 (ConvNeXt Tiny, 400_0001과 200_0001 매칭)</em></p>
 ---
 
 ## 6) 트러블슈팅

@@ -38,4 +38,5 @@ dinov3_main/
 dinov3_weights/
 project/.mypy_cache/
 project/.pytest_cache/
+docs/hf_token.txt
 
