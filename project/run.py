@@ -6,7 +6,7 @@ run.py
   * --weights / --group / --all-weights 로 가중치 선택
   * Advanced setting: match/keypoint/line threshold + max features
   * 요청한 폴더 구조로 JSON 저장:
-      /exports/pair_match/<weight>_<Aalt>_<Aframe>/
+      /exports/dinov3_match/<weight>_<Aalt>_<Aframe>/
         <weight>_<Aalt.Aframe>_<Balt.Bframe>.json
 """
 
@@ -19,12 +19,12 @@ import numpy as np
 import torch
 
 from imatch.cli_utils import bounded_float, bounded_int
-from imatch.env import REPO_DIR, IMG_ROOT, EXPORT_DIR
+from imatch.env import REPO_DIR, IMG_ROOT, EMBED_ROOT
 from imatch.features import apply_keypoint_threshold, cosine_similarity, extract_global_feature, extract_patch_tokens
 from imatch.io_images import enumerate_pairs, load_image_tensor, scan_images_by_regex
 from imatch.matching import compute_matches_mutual_knn, enforce_unique_matches, grid_side, subsample_tokens
 from imatch.models import load_model
-from imatch.paths import PAIR_MATCH_ROOT, out_dir_for_pair, out_name_for_pair
+from imatch.paths import match_root, out_dir_for_pair, out_name_for_pair
 from imatch.registries import WEIGHT_FILES, WEIGHT_GROUPS, resolve_weight_paths
 from imatch.tfms import build_transform
 
@@ -36,31 +36,21 @@ def main():
     # 이미지 선택
     p.add_argument("-a","--pair-a", help="ALT.FRAME 또는 ALT (생략시 전체)")
     p.add_argument("-b","--pair-b", help="ALT.FRAME 또는 ALT (생략시 전체)")
-    p.add_argument("--regex", default=r".*_(?P<alt>\d{3})_(?P<frame>\d{4})\.(jpg|jpeg|png|bmp|tif|tiff|webp)$",
-                   help="IMG_ROOT 하위에서 ALT.FRAME을 뽑을 정규식")
+    p.add_argument("--regex", default=r".*_(?P<alt>\d{3})_(?P<frame>\d{4})\.(jpg|jpeg|png|bmp|tif|tiff|webp)$", help="IMG_ROOT 하위에서 ALT.FRAME을 뽑을 정규식")
     p.add_argument("--exts", nargs="*", default=["jpg","jpeg","png","bmp","tif","tiff","webp"])
     # 가중치 선택
     g = p.add_mutually_exclusive_group(required=True)
-    g.add_argument("-w", "--weights", nargs="+", help="alias 리스트")
-    g.add_argument("--group", choices=list(WEIGHT_GROUPS.keys()))
+    g.add_argument("-w", "--weights", nargs="+", help="가중치 옵션")
+    g.add_argument("-g", "--group", choices=list(WEIGHT_GROUPS.keys()))
     g.add_argument("--all-weights", action="store_true")
     # 매칭 하이퍼파라미터
-    p.add_argument("--image-size", type=int, default=336)
-    p.add_argument("--max-features", "--max-ft", type=bounded_int(10, 10000), default=1000,
-                   metavar="[10-10000]", help="패치 토큰 최대 개수")
-    p.add_argument("--match-th", type=bounded_float(0.0, 1.0), default=0.1,
-                   metavar="[0-1]", help="유사도 임계값 (match threshold)")
-    p.add_argument("--keypoint-th", type=bounded_float(0.0, 1.0), default=0.015,
-                   metavar="[0-1]", help="패치 토큰 보존 임계값 (keypoint threshold)")
-    p.add_argument("--line-th", type=bounded_float(0.0, 1.0), default=0.2,
-                   metavar="[0-1]", help="매칭 라인 보존 임계값 (line threshold)")
+    p.add_argument("-i", "--image-size", type=int, default=336)
+    p.add_argument("-x", "--max-features", type=bounded_int(10, 100000), default=2000, metavar="[10-100000]", help="패치 토큰 최대 개수")
+    p.add_argument("-t", "--match-th", type=bounded_float(0.0, 1.0), default=0.05, metavar="[0-1]", help="유사도 임계값 (match threshold)")
+    p.add_argument("-k", "--keypoint-th", type=bounded_float(0.0, 1.0), default=0.005, metavar="[0-1]", help="패치 토큰 보존 임계값 (keypoint threshold)")
+    p.add_argument("-l", "--line-th", type=bounded_float(0.0, 1.0), default=0.2, metavar="[0-1]", help="매칭 라인 보존 임계값 (line threshold)")
+    p.add_argument("-e", "--save-emb", action="store_true", help="Save global/patch embeddings to EMBED_ROOT for each pair.")
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    p.add_argument(
-        "-e",
-        "--save-emb",
-        action="store_true",
-        help="Save global/patch embeddings to EXPORT_DIR for each pair."
-    )
     args = p.parse_args()
 
     # 이미지 후보 스캔
@@ -85,8 +75,8 @@ def main():
     # 전처리
     tfm = build_transform(args.image_size)
 
-    if args.save_embeds:
-        EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    if args.save_emb:
+        EMBED_ROOT.mkdir(parents=True, exist_ok=True)
 
     ## === ※ 이미지 쌍 X 가중치 별 매칭 (DINOv3 아키텍쳐 고유 로직) ※ ===
     # 실행
@@ -94,9 +84,9 @@ def main():
         for w_alias, hub_name, ckpt in weights:
             print(f"[weight] {w_alias}  hub={hub_name}  ckpt={ckpt}")
             model, _ = load_model(REPO_DIR, args.device, hub_name, ckpt)
-            if args.save_embeds:
+            if args.save_emb:
                 # 가중치별 기본 임베딩 디렉터리 확보
-                (EXPORT_DIR / w_alias).mkdir(parents=True, exist_ok=True)
+                (EMBED_ROOT / w_alias).mkdir(parents=True, exist_ok=True)
 
             # 워밍업 (extract_global_feature, extract_patch_tokens 더미 호출)
             if not getattr(model, "_imatch_warmed_up", False):
@@ -147,8 +137,8 @@ def main():
                     pa_np = pa.detach().cpu().float().numpy()
                     pb_np = pb.detach().cpu().float().numpy()
 
-                    if args.save_embeds:
-                        embed_dir = EXPORT_DIR / w_alias / f"{a_key}_{b_key}"
+                    if args.save_emb:
+                        embed_dir = EMBED_ROOT / w_alias / f"{a_key}_{b_key}"
                         embed_dir.mkdir(parents=True, exist_ok=True)
                         # 추적용으로 글로벌/패치 임베딩을 넘파이로 저장
                         np.save(embed_dir / "global_a.npy", fa.detach().cpu().float().numpy())
@@ -206,12 +196,12 @@ def main():
                 meta = dict(
                     repo_dir=str(REPO_DIR),
                     img_root=str(IMG_ROOT),
-                    export_root=str(EXPORT_DIR),
+                    embed_root=str(EMBED_ROOT),
+                    match_root=str(match_root()),
                     ckpt=str(ckpt),
                     hub_model=hub_name,
                     device=args.device,
                     image_size=int(args.image_size),
-                    pair_match_root=str(PAIR_MATCH_ROOT),
                 )
                 payload = dict(
                     meta=meta, image_a=str(pA), image_b=str(pB),

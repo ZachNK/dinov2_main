@@ -25,11 +25,11 @@ from transformers import AutoImageProcessor, AutoModel, BatchFeature
 from transformers.utils import logging as hf_logging
 
 from imatch.cli_utils import bounded_float, bounded_int
-from imatch.env import EXPORT_DIR, IMG_ROOT
+from imatch.env import EMBED_ROOT, IMG_ROOT
 from imatch.features import apply_keypoint_threshold, cosine_similarity
 from imatch.io_images import enumerate_pairs, scan_images_by_regex
 from imatch.matching import compute_matches_mutual_knn, enforce_unique_matches, grid_side, subsample_tokens
-from imatch.paths import PAIR_MATCH_ROOT, out_dir_for_pair, out_name_for_pair
+from imatch.paths import match_root, out_dir_for_pair, out_name_for_pair
 
 # Hugging Face model aliases that mirror 기존 torch.hub alias 일부.
 HF_MODEL_ALIASES: dict[str, str] = {
@@ -205,7 +205,7 @@ def main() -> None:
         "-e",
         "--save-emb",
         action="store_true",
-        help="각 pair 에 대해 global / patch embedding 을 EXPORT_DIR 에 저장",
+        help="각 pair 에 대해 global / patch embedding 을 EMBED_ROOT 에 저장",
     )
     parser.add_argument(
         "--hf-token",
@@ -235,7 +235,7 @@ def main() -> None:
     print(f"[models] selected={len(specs)} ids={[spec.model_id for spec in specs]}")
 
     if args.save_emb:
-        EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+        EMBED_ROOT.mkdir(parents=True, exist_ok=True)
 
     device = torch.device(args.device)
     if args.device.startswith("cuda") and not torch.cuda.is_available():
@@ -266,7 +266,7 @@ def main() -> None:
                 model_type = getattr(model.config, "model_type", "")
 
                 if args.save_emb:
-                    (EXPORT_DIR / spec.label).mkdir(parents=True, exist_ok=True)
+                    (EMBED_ROOT / spec.label).mkdir(parents=True, exist_ok=True)
 
                 for a_key, b_key in pairs:
                     pA, pB = key2path[a_key], key2path[b_key]
@@ -329,7 +329,7 @@ def main() -> None:
                             pb_np = ensure_float_cpu(pb).numpy()
 
                             if args.save_emb:
-                                embed_dir = EXPORT_DIR / spec.label / f"{a_key}_{b_key}"
+                                embed_dir = EMBED_ROOT / spec.label / f"{a_key}_{b_key}"
                                 embed_dir.mkdir(parents=True, exist_ok=True)
                                 np.save(embed_dir / "global_a.npy", fa.unsqueeze(0).numpy())
                                 np.save(embed_dir / "global_b.npy", fb.unsqueeze(0).numpy())
@@ -381,11 +381,11 @@ def main() -> None:
 
                     meta = dict(
                         img_root=str(IMG_ROOT),
-                        export_root=str(EXPORT_DIR),
+                        embed_root=str(EMBED_ROOT),
+                        match_root=str(match_root()),
                         hf_model=spec.model_id,
                         device=str(device),
                         image_size=int(args.image_size),
-                        pair_match_root=str(PAIR_MATCH_ROOT),
                     )
 
                     payload = dict(

@@ -1,8 +1,9 @@
 ﻿"""
-visualize.py
-- runCLI.py 가 생성한 JSON을 읽어 좌/우 이미지 매칭을 PNG로 저장
-- 입력: --root (기본 /exports/pair_match) 내 JSON
-- 출력: $PAIR_VIZ_DIR/<weight>_<Aalt>_<Aframe>/<same_base>.png
+visualize.py (interactive 확장, 최종본)
+- 원래: 폴더를 고르면 그 폴더 내 모든 JSON 시각화
+- 추가:
+  1) 폴더 선택 후, 해당 폴더 내 JSON을 다시 번호로 보여주고 '단일 JSON만' 시각화 가능
+  2) 최상위 프롬프트에서 '-a' 입력 시, 루트 하위 모든 폴더의 모든 JSON 일괄 시각화
 """
 
 import argparse
@@ -10,22 +11,17 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Iterable, List, Set, Tuple
+from typing import Iterable, List, Set, Tuple, Optional
 
 import cv2
 import numpy as np
 from PIL import Image
 
-from imatch.env import PAIR_VIZ_DIR
-
-PAIR_MATCH_ROOT = Path("/exports/pair_match")  # JSON 湲곕낯 猷⑦듃
+from imatch.env import MATCH_ROOT, VIS_ROOT
 
 
+# ---------- OpenCV RANSAC 플래그 탐색 ----------
 def _discover_homography_methods() -> Tuple[dict, str]:
-    """
-    OpenCV가 제공하는 homography RANSAC flag 들을 탐색.
-    반환: (name->flag mapping, default name)
-    """
     candidates = {
         "cv2_ransac": ["RANSAC"],
         "cv2_usac_default": ["USAC_DEFAULT"],
@@ -53,61 +49,7 @@ def _discover_homography_methods() -> Tuple[dict, str]:
 HOMOGRAPHY_METHODS, HOMOGRAPHY_DEFAULT = _discover_homography_methods()
 
 
-# ---------- 유틸 ----------
-def env_path(name: str, default: Path) -> Path:
-    value = os.environ.get(name)
-    return Path(value) if value else default
-
-
-def env_int(name: str, default: int) -> int:
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except ValueError:
-        return default
-
-
-def env_float(name: str, default: float) -> float:
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    try:
-        return float(value)
-    except ValueError:
-        return default
-
-
-def env_bool(name: str, default: bool = False) -> bool:
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    return value.strip().lower() in ("1", "true", "yes", "on")
-
-
-def clamp(value, low, high):
-    return max(low, min(high, value))
-
-
-def bounded_int(low: int, high: int):
-    def _check(raw: str) -> int:
-        val = int(raw)
-        if not (low <= val <= high):
-            raise argparse.ArgumentTypeError(f"value {val} not in [{low}, {high}]")
-        return val
-    return _check
-
-
-def bounded_float(low: float, high: float):
-    def _check(raw: str) -> float:
-        val = float(raw)
-        if not (low <= val <= high):
-            raise argparse.ArgumentTypeError(f"value {val} not in [{low}, {high}]")
-        return val
-    return _check
-
-
+# ---------- 선택 리스트 ----------
 def list_pick_candidates(root: Path) -> List[str]:
     candidates: List[str] = []
     if not root.exists():
@@ -121,28 +63,87 @@ def list_pick_candidates(root: Path) -> List[str]:
     return candidates
 
 
-def prompt_pick(root: Path) -> List[str]:
+def _list_json_in_folder(folder: Path) -> List[str]:
+    """폴더 내 JSON을 재귀로 수집하여 폴더 기준 상대경로 문자열 리스트 반환."""
+    if not folder.exists():
+        return []
+    rels: List[str] = []
+    for jp in sorted(folder.rglob("*.json")):
+        try:
+            rels.append(str(jp.relative_to(folder)))
+        except Exception:
+            rels.append(jp.name)
+    return rels
+
+
+def prompt_pick_top(root: Path) -> List[str]:
+    """
+    1차 프롬프트:
+      - 숫자 입력: 해당 항목 선택
+      - '-a' 입력: 루트 하위 전체 JSON(**/*.json) 일괄 처리
+      - 엔터: 재입력 유도
+    반환: ["**/*.json"] 또는 ["선택폴더/"] 또는 ["선택.json"]
+    """
     candidates = list_pick_candidates(root)
+
     if not sys.stdin.isatty():
-        raise SystemExit("No specified and interactive selection unavailable (non-tty).")
-    if not candidates:
-        print("[info] candidates가 없어 전체 JSON을 시각화합니다.")
+        # non-tty에서는 전체 처리
         return ["**/*.json"]
 
-    print("번호로 선택하시오:")
+    if not candidates:
+        print("[info] 후보가 없어 전체 JSON을 시각화합니다.")
+        return ["**/*.json"]
+
+    print("번호로 선택하시오 (또는 -a = 전체일괄):")
     for idx, rel in enumerate(candidates, start=1):
         print(f"  {idx:2d}. {rel}")
-
     while True:
-        choice = input("시각화할 항목 번호를 입력하세요: ").strip()
+        choice = input("폴더/파일 번호 또는 '-a': ").strip()
+        if choice == "-a":
+            return ["**/*.json"]
         if not choice:
-            print("  숫자를 입력하세요.")
+            print("  숫자 또는 '-a'를 입력하세요.")
+            continue
+        if not choice.isdigit():
+            print("  잘못된 입력입니다. 숫자 또는 '-a'만 허용됩니다.")
             continue
         idx = int(choice) - 1
         if not 0 <= idx < len(candidates):
             print(f"  1에서 {len(candidates)} 사이의 숫자를 입력하세요.")
             continue
         return [candidates[idx]]
+
+
+def prompt_pick_json_in_folder(root: Path, picked: str) -> List[str]:
+    """
+    2차 프롬프트(폴더 선택 시):
+      - 숫자: 해당 JSON '한 개'만 시각화
+      - 엔터: 폴더 내 전체 JSON 일괄 처리(원래 방식)
+    반환: ["폴더/내/선택.json"] 또는 ["폴더/"]
+    """
+    folder = (root / picked.rstrip("/"))
+    json_list = _list_json_in_folder(folder)
+
+    if not json_list:
+        print("[info] 해당 폴더에 JSON이 없어 스킵합니다.")
+        return []
+
+    print(f"'{picked}' 폴더 내 JSON 목록:")
+    for idx, rel in enumerate(json_list, start=1):
+        print(f"  {idx:2d}. {rel}")
+    choice = input("단일 JSON만 시각화하려면 번호 입력, 엔터=폴더 전체: ").strip()
+    if not choice:
+        return [picked]
+    if choice.isdigit():
+        jdx = int(choice) - 1
+        if 0 <= jdx < len(json_list):
+            return [str(Path(picked) / json_list[jdx])]
+        else:
+            print("[warn] 번호 범위 초과. 폴더 전체를 시각화합니다.")
+            return [picked]
+    else:
+        print("[warn] 잘못된 입력. 폴더 전체를 시각화합니다.")
+        return [picked]
 
 
 def add_json_path(acc: List[Path], seen: Set[Path], path: Path) -> None:
@@ -161,10 +162,12 @@ def collect_jsons(root: Path, selections: Iterable[str]) -> List[Path]:
     for sel in selections:
         if not sel:
             continue
-        if sel in (".", "/"):
-            target = root
-        else:
-            target = root / sel
+        target = (root if sel in (".", "/") else root / sel)
+        # 글롭 패턴 처리
+        if any(ch in sel for ch in ["*", "?", "["]) and not target.exists():
+            for jp in sorted(root.rglob(sel)):
+                add_json_path(files, seen, jp)
+            continue
         if not target.exists():
             print(f"[warn] 선택한 항목이 존재하지 않습니다: {sel}")
             continue
@@ -173,7 +176,6 @@ def collect_jsons(root: Path, selections: Iterable[str]) -> List[Path]:
                 add_json_path(files, seen, jp)
         else:
             add_json_path(files, seen, target)
-
     return sorted(files)
 
 
@@ -195,12 +197,14 @@ def best_rect_grid(n: int) -> Tuple[int, int]:
 
 
 def idx_to_xy(idx: np.ndarray, H: int, W: int) -> np.ndarray:
+    # row-major: y(행), x(열)
     y = idx // W
     x = idx % W
     return np.stack([x, y], axis=1)
 
 
 def grid_to_pixels(xy: np.ndarray, img_w: int, img_h: int, W: int, H: int) -> np.ndarray:
+    # 셀 중심 좌표로 매핑
     px = (xy[:, 0] + 0.5) * (img_w / W)
     py = (xy[:, 1] + 0.5) * (img_h / H)
     return np.stack([px, py], axis=1)
@@ -221,7 +225,7 @@ def ransac_filter(
         return np.ones((N,), dtype=bool)
 
     if method == "homography" and N >= 4:
-        H, mask = cv2.findHomography(
+        _, mask = cv2.findHomography(
             ptsA, ptsB, homography_flag,
             ransacReprojThreshold=reproj_thresh,
             maxIters=max_iters,
@@ -246,7 +250,7 @@ def ransac_filter(
     return np.ones((N,), dtype=bool)
 
 
-# ---------- 그리기----------
+# ---------- 그리기 ----------
 def hstack_images(imA: np.ndarray, imB: np.ndarray, pad: int = 8, color=(30, 30, 30)) -> Tuple[np.ndarray, int]:
     h = max(imA.shape[0], imB.shape[0])
     wA, wB = imA.shape[1], imB.shape[1]
@@ -301,65 +305,51 @@ def draw_matches(
 
 # ---------- 메인 ----------
 def main():
-    root_default = env_path("IMATCH_VIZ_ROOT", PAIR_MATCH_ROOT)
-    out_default = env_path("IMATCH_VIZ_OUT", PAIR_VIZ_DIR)
-    max_lines_default = clamp(env_int("IMATCH_VIZ_MAX_LINES", 1000), 0, 5000)
-    linewidth_default = clamp(env_int("IMATCH_VIZ_LINEWIDTH", 3), 0, 20)
-    alpha_default = clamp(env_int("IMATCH_VIZ_ALPHA", 180), 0, 255)
-    point_radius_default = clamp(env_int("IMATCH_VIZ_POINT_RADIUS", -1), -1, 100)
-    draw_points_default = env_bool("IMATCH_VIZ_DRAW_POINTS", False)
-    ransac_env = os.environ.get("IMATCH_VIZ_RANSAC", "homography").lower()
-    ransac_default = ransac_env if ransac_env in {"off", "affine", "homography"} else "homography"
-    impl_env = os.environ.get("IMATCH_VIZ_RANSAC_IMPL", HOMOGRAPHY_DEFAULT)
-    if impl_env not in HOMOGRAPHY_METHODS:
-        impl_env = HOMOGRAPHY_DEFAULT
-    reproj_default = clamp(env_float("IMATCH_VIZ_REPROJ_TH", 8.0), 0.0, 12.0)
-    confidence_default = clamp(env_float("IMATCH_VIZ_CONFIDENCE", 0.9999), 0.0, 1.0)
-    iters_default = clamp(env_int("IMATCH_VIZ_ITERS", 10000), 0, 100000)
+    # 기본 경로
+    root_default = Path(os.environ.get("MATCH_ROOT", str(MATCH_ROOT)))
+    out_default = Path(os.environ.get("VIS_ROOT", str(VIS_ROOT)))
 
     ap = argparse.ArgumentParser(description="Visualize DINOv3 matches (from JSON)")
-    ap.add_argument("--root", type=str, default=str(root_default),
-                    help="매칭 JSON이 위치한 루트 (기본: IMATCH_VIZ_ROOT 또는 /exports/pair_match)")
-    ap.add_argument("--out", type=str, default=str(out_default),
-                    help="결과 PNG 저장 루트 (기본: IMATCH_VIZ_OUT 또는 PAIR_VIZ_DIR)")
-    ap.add_argument("--max-lines", type=bounded_int(0, 5000), default=max_lines_default,
-                    help="그릴 최대 매칭 수 (0이면 미사용)")
-    ap.add_argument("--linewidth", type=bounded_int(0, 20), default=linewidth_default,
-                    help="매칭 선 두께 (0이면 선 미표시)")
+    ap.add_argument("-r", "--root", type=str, default=str(root_default),
+                    help="매칭 JSON 루트 (기본: MATCH_ROOT 또는 /exports/dinov3_match)")
+    ap.add_argument("-o", "--out", type=str, default=str(out_default),
+                    help="결과 PNG 저장 루트 (기본: VIS_ROOT 또는 /exports/dinov3_vis)")
+
+    # 시각화/RANSAC 옵션 (원본과 동등 동작)
+    ap.add_argument("-xl", "--max-lines", type=int, default=int(os.environ.get("VIS_MAX_LINES", 1000)))
+    ap.add_argument("-lw", "--linewidth", type=int, default=int(os.environ.get("VIS_LINEWIDTH", 3)))
+    ap.add_argument("-al", "--alpha", type=int, default=int(os.environ.get("VIS_ALPHA", 180)))
     point_group = ap.add_mutually_exclusive_group()
-    point_group.add_argument("--draw-points", dest="draw_points", action="store_true",
-                             help="매칭 지점을 원으로 표시")
-    point_group.add_argument("--no-points", dest="draw_points", action="store_false",
-                             help="매칭 지점 표시 비활성화")
-    ap.set_defaults(draw_points=draw_points_default)
-    ap.add_argument("--point-radius", type=bounded_int(-1, 100), default=point_radius_default,
-                    help="지점 반경 (-1: 자동, 0: 표시 안함)")
-    ap.add_argument("--alpha", type=bounded_int(0, 255), default=alpha_default,
-                    help="선/점 오버레이 알파값 (0-255)")
-    ap.add_argument("--ransac", choices=["off", "affine", "homography"], default=ransac_default,
-                    help="RANSAC 모드 (off/affine/homography)")
-    ap.add_argument("--ransac-method", choices=sorted(HOMOGRAPHY_METHODS.keys()), default=impl_env,
-                    help="homography RANSAC 플래그 (OpenCV 제공값만 표시)")
-    ap.add_argument("--reproj-th", type=bounded_float(0.0, 12.0), default=reproj_default,
-                    help="RANSAC 재투영 임계값 (0-12)")
-    ap.add_argument("--confidence", type=bounded_float(0.0, 1.0), default=confidence_default,
-                    help="RANSAC 신뢰도 (0-1)")
-    ap.add_argument("--iters", type=bounded_int(0, 100000), default=iters_default,
-                    help="RANSAC 반복 횟수 (0-100000)")
+    point_group.add_argument("-dp", "--draw-points", dest="draw_points", action="store_true")
+    point_group.add_argument("-xp", "--no-points", dest="draw_points", action="store_false")
+    ap.set_defaults(draw_points=(os.environ.get("VIS_DRAW_POINTS", "0").strip().lower() in ("1", "true", "yes", "on")))
+    ap.add_argument("-pr", "--point-radius", type=int, default=int(os.environ.get("VIS_POINT_RADIUS", -1)))
+    ap.add_argument("-R", "--ransac", choices=["off", "affine", "homography"],
+                    default=os.environ.get("VIS_RANSAC", "homography").lower())
+    ap.add_argument("-m", "--ransac-method", type=str, default=os.environ.get("VIS_RANSAC_IMPL", HOMOGRAPHY_DEFAULT))
+    ap.add_argument("-t", "--reproj-th", type=float, default=float(os.environ.get("VIS_REPROJ_TH", 8.0)))
+    ap.add_argument("-c", "--confidence", type=float, default=float(os.environ.get("VIS_CONFIDENCE", 0.9999)))
+    ap.add_argument("-i", "--iters", type=int, default=int(os.environ.get("VIS_ITERS", 10000)))
+
     args = ap.parse_args()
 
     pairs_root = Path(args.root).expanduser()
     if not pairs_root.exists():
         raise SystemExit(f"[error] root 디렉토리가 존재하지 않습니다: {pairs_root}")
 
-    homography_flag = HOMOGRAPHY_METHODS.get(
-        args.ransac_method,
-        HOMOGRAPHY_METHODS.get(HOMOGRAPHY_DEFAULT, cv2.RANSAC),
-    )
+    # --- 1차 선택 ---
+    top_pick = prompt_pick_top(pairs_root)  # ["**/*.json"] or ["folder/"] or ["file.json"]
 
-    pick_entries = prompt_pick(pairs_root)
+    # --- 2차 선택(폴더일 때만) ---
+    if len(top_pick) == 1 and top_pick[0].endswith("/"):
+        selections = prompt_pick_json_in_folder(pairs_root, top_pick[0])
+        if not selections:
+            print("[warn] 선택된 항목에서 JSON을 찾지 못했습니다.")
+            return
+    else:
+        selections = top_pick
 
-    json_paths = collect_jsons(pairs_root, pick_entries)
+    json_paths = collect_jsons(pairs_root, selections)
     if not json_paths:
         print("[warn] 선택된 항목에서 JSON을 찾지 못했습니다.")
         return
@@ -368,11 +358,24 @@ def main():
     out_root = Path(args.out).expanduser()
     out_root.mkdir(parents=True, exist_ok=True)
 
-    for jp in json_paths:
-        data = json.loads(jp.read_text(encoding="utf-8"))
+    # --- RANSAC 플래그를 루프 밖에서 한 번만 계산 ---
+    # args.ransac_method가 유효 키가 아니면 기본값으로 대체
+    ransac_key = args.ransac_method if args.ransac_method in HOMOGRAPHY_METHODS else HOMOGRAPHY_DEFAULT
+    homography_flag = HOMOGRAPHY_METHODS.get(ransac_key, cv2.RANSAC)
 
-        imgA = Path(data["image_a"])
-        imgB = Path(data["image_b"])
+    # --- 처리 루프: JSON 파싱 → 좌표복원 → RANSAC → 시각화 → PNG 저장 ---
+    for jp in json_paths:
+        try:
+            data = json.loads(jp.read_text(encoding="utf-8"))
+        except Exception as e:
+            print(f"[skip] JSON 파싱 실패: {jp} ({e})")
+            continue
+
+        imgA = Path(data.get("image_a", ""))
+        imgB = Path(data.get("image_b", ""))
+        if not imgA or not imgB:
+            print(f"[skip] image_a/image_b 누락: {jp}")
+            continue
 
         patch = data.get("patch", None)
         if not patch or not patch.get("idx_a") or not patch.get("idx_b"):
@@ -381,13 +384,18 @@ def main():
 
         idx_a = np.array(patch["idx_a"], dtype=np.int64)
         idx_b = np.array(patch["idx_b"], dtype=np.int64)
-        n_a = int(patch["n_a"])
-        n_b = int(patch["n_b"])
+        n_a = int(patch.get("n_a", len(idx_a)))
+        n_b = int(patch.get("n_b", len(idx_b)))
+
         g_a = patch.get("grid_g_a")
         g_b = patch.get("grid_g_b")
 
-        imA = np.array(Image.open(str(imgA)).convert("RGB"))[:, :, ::-1]
-        imB = np.array(Image.open(str(imgB)).convert("RGB"))[:, :, ::-1]
+        try:
+            imA = np.array(Image.open(str(imgA)).convert("RGB"))[:, :, ::-1]
+            imB = np.array(Image.open(str(imgB)).convert("RGB"))[:, :, ::-1]
+        except Exception as e:
+            print(f"[skip] 이미지 로드 실패: {jp} ({e})")
+            continue
 
         if g_a is not None:
             H_a = W_a = int(g_a)
@@ -398,14 +406,11 @@ def main():
         else:
             H_b, W_b = best_rect_grid(n_b)
 
-        xy_a = idx_to_xy(idx_a, H_a, W_a)
-        xy_b = idx_to_xy(idx_b, H_b, W_b)
-        ptsA = grid_to_pixels(xy_a, imA.shape[1], imA.shape[0], W_a, H_a).astype(np.float32)
-        ptsB = grid_to_pixels(xy_b, imB.shape[1], imB.shape[0], W_b, H_b).astype(np.float32)
+        ptsA = grid_to_pixels(idx_to_xy(idx_a, H_a, W_a), imA.shape[1], imA.shape[0], W_a, H_a).astype(np.float32)
+        ptsB = grid_to_pixels(idx_to_xy(idx_b, H_b, W_b), imB.shape[1], imB.shape[0], W_b, H_b).astype(np.float32)
 
         mask = ransac_filter(
-            ptsA,
-            ptsB,
+            ptsA, ptsB,
             args.ransac,
             homography_flag,
             args.reproj_th,
@@ -417,15 +422,9 @@ def main():
 
         canvas, xoffB = hstack_images(imA, imB)
         draw_matches(
-            canvas,
-            ptsA_in,
-            ptsB_in,
-            xoffB,
-            args.max_lines,
-            args.linewidth,
-            args.draw_points,
-            args.alpha,
-            args.point_radius,
+            canvas, ptsA_in, ptsB_in, xoffB,
+            args.max_lines, args.linewidth, args.draw_points,
+            args.alpha, args.point_radius,
         )
 
         try:
@@ -434,8 +433,11 @@ def main():
             rel_path = Path(jp.name)
         out_path = out_root / rel_path.with_suffix(".png")
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        cv2.imwrite(str(out_path), canvas)
-        print(f"[keep] {out_path}")
+        ok = cv2.imwrite(str(out_path), canvas)
+        if ok:
+            print(f"[keep] {out_path}")
+        else:
+            print(f"[warn] 저장 실패: {out_path}")
 
 
 if __name__ == "__main__":

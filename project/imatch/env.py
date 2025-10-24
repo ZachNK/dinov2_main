@@ -3,20 +3,25 @@ import os
 from pathlib import Path
 from typing import Optional
 
-def getenv(k: str, default: Optional[str] = None, required: bool = False) -> str:
-    """
-    환경변수 안전 로더. required=True인데 비어있으면 SystemExit.
-    """
-    v = os.getenv(k, default)
-    if required and (v is None or str(v).strip() == ""):
-        raise SystemExit(f"Missing env: {k}")
-    return v
 
-# 컨테이너 내 기본 경로 (docker-compose.yml/.env 에서 주입)
-REPO_DIR   = Path(getenv("REPO_DIR", required=True))
-IMG_ROOT   = Path(getenv("IMG_ROOT", required=True))
-EXPORT_DIR = Path(getenv("EXPORT_DIR", "/exports/dinov3_embeds"))
-PAIR_VIZ_DIR = Path(getenv("PAIR_VIZ_DIR", "/exports/pair_viz"))
+def getenv(key: str, default: Optional[str] = None, required: bool = False) -> str:
+    """
+    Environment loader with optional required enforcement.
+    """
+    value = os.getenv(key, default)
+    if required and (value is None or str(value).strip() == ""):
+        raise SystemExit(f"Missing env: {key}")
+    return value
 
-# 네트워크 차단 플래그 (torch.hub 원격 다운로드 방지)
+
+# Base directories (docker-compose.yml/.env inject absolute paths)
+REPO_DIR = Path(getenv("REPO_DIR", required=True))
+IMG_ROOT = Path(getenv("IMG_ROOT", required=True))
+
+# Output roots (Windows host paths are mounted to /exports inside the container)
+EMBED_ROOT = Path(getenv("EMBED_ROOT", "/exports/dinov3_embeds"))
+MATCH_ROOT = Path(getenv("MATCH_ROOT", "/exports/dinov3_match"))
+VIS_ROOT = Path(getenv("VIS_ROOT", "/exports/dinov3_vis"))
+
+# Network guard: torch.hub remote downloads are disabled unless explicitly opted out
 DINOV3_BLOCK_NET = getenv("DINOV3_BLOCK_NET", "1").strip() == "1"

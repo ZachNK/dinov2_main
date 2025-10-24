@@ -5,8 +5,7 @@ Utility helpers for naming pair-match output files.
 
 from pathlib import Path
 
-# TODO: expose via env if needed. Current convention is fixed inside container.
-PAIR_MATCH_ROOT = Path("/exports/pair_match")
+from imatch.env import MATCH_ROOT
 
 
 def split_key(key: str) -> tuple[str, str]:
@@ -14,11 +13,17 @@ def split_key(key: str) -> tuple[str, str]:
     return alt, frame
 
 
+def match_root() -> Path:
+    """
+    Expose the configured match root (JSON destination) for callers that need the raw path.
+    """
+    return MATCH_ROOT
+
+
 def out_dir_for_pair(weight_alias: str, key_a: str) -> Path:
     alt, frame = split_key(key_a)
-    return PAIR_MATCH_ROOT / f"{weight_alias}_{alt}_{frame}"
+    return MATCH_ROOT / f"{weight_alias}_{alt}_{frame}"
 
 
 def out_name_for_pair(weight_alias: str, key_a: str, key_b: str) -> str:
     return f"{weight_alias}_{key_a}_{key_b}"
-

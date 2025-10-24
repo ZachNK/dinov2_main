@@ -1,4 +1,4 @@
-# DINOv3 Image Matching (Docker)
+﻿# DINOv3 Image Matching (Docker)
 
 Docker Desktop 위에서 DINOv3 기반 이미지 매칭과 시각화를 수행하기 위한 프로젝트.  
 컨테이너 안에서는 1:1 매칭을 수행하도록 구성되어 있으며, 결과(JSON/PNG)는 호스트의 지정된 디렉터리에 저장.
@@ -446,8 +446,8 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 주요 옵션
 | 옵션 | 기본값 (환경변수) | 설명 |
 | --- | --- | --- |
-| `--root` | `/exports/pair_match` (`IMATCH_VIZ_ROOT`) | JSON 루트 |
-| `--out` | `/exports/pair_viz` (`IMATCH_VIZ_OUT`) | PNG 출력 루트 |
+| `--root` | `/exports/dinov3_match` (`MATCH_ROOT`) | JSON 루트 |
+| `--out` | `/exports/dinov3_vis` (`VIS_ROOT`) | PNG 출력 루트 |
 | `--ransac` | `homography` | `off/affine/homography` |
 | `--reproj-th` | 8.0 | 투영 오차 임계값 |
 | `--confidence` | 0.9999 | RANSAC 신뢰도 |
@@ -482,6 +482,7 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
     <img src="docs/examples/cxTiny_400_0001/RESULT_cxTiny_400.0001_200.0001.png" width="75%">
   </p>
   <p align="center"><em>시각화 결과 (ConvNeXt Tiny, 400_0001과 200_0001 매칭)</em></p>
+
 ---
 
 ## 6) 트러블슈팅
@@ -494,8 +495,9 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 | 매칭 JSON이 생성되지 않음 | `pairs_to_run=0` 인 경우 ALT.FRAME 조합이 존재하지 않는 것 → 데이터셋 이름/정규식 확인 |
 | 1:1 매칭이 맞지 않는 것처럼 보임 | `run` 내부에서 자동으로 1:1을 강제함. PNG 상에서 선이 적게 보인다면 RANSAC 필터를 완화하거나 `vis --ransac off`로 검증 |
 | 기타 로그 | `docker compose logs -f pair` 로 컨테이너 로그 확인 |
+| 추가 디버깅 | 필요한 경우 `docker compose exec pair bash`로 컨테이너 내부에 진입하여 추가 디버깅을 진행 가능 |
 
 ---
 
-필요한 경우 `docker compose exec pair bash`로 컨테이너 내부에 진입하여 추가 디버깅을 진행 가능.  
+  
 
