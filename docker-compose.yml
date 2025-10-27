@@ -6,18 +6,18 @@ services:
       context: .
       dockerfile: Dockerfile
     image: ${IMAGE_NAME}
-    container_name: dinov3-matching
+    container_name: dinov2-matching
     gpus: all
     shm_size: "8g"
     working_dir: /workspace/project
     environment:
       TZ: ${TZ}
       # 매칭 스크립트에서 사용하는 경로
-      REPO_DIR: 
-      IMG_ROOT: 
-      EMBED_ROOT: 
-      MATCH_ROOT: 
-      VIS_ROOT: 
+      REPO_DIR: ${REPO_DIR}
+      IMG_ROOT: ${IMG_ROOT}
+      EMBED_ROOT: ${EMBED_ROOT}
+      MATCH_ROOT: ${MATCH_ROOT}
+      VIS_ROOT: ${VIS_ROOT}
       VIS_DRAW_POINTS: ${VIS_DRAW_POINTS}
       VIS_POINT_RADIUS: ${VIS_POINT_RADIUS}
       VIS_ALPHA: ${VIS_ALPHA}
@@ -27,7 +27,7 @@ services:
       VIS_ITERS: ${VIS_ITERS}
     volumes:
       - ${PROJECT_HOST}:/workspace/project
-      - ${CODE_HOST}:/workspace/dinov3
+      - ${CODE_HOST}:/workspace/dinov2
       - ${WEIGHTS_HOST}:/opt/weights:ro
       - ${DATASET_HOST}:/opt/datasets:ro
       - ${EXPORT_HOST}:/exports

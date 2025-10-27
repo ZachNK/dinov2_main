@@ -19,9 +19,9 @@ REPO_DIR = Path(getenv("REPO_DIR", required=True))
 IMG_ROOT = Path(getenv("IMG_ROOT", required=True))
 
 # Output roots (Windows host paths are mounted to /exports inside the container)
-EMBED_ROOT = Path(getenv("EMBED_ROOT", "/exports/dinov3_embeds"))
-MATCH_ROOT = Path(getenv("MATCH_ROOT", "/exports/dinov3_match"))
-VIS_ROOT = Path(getenv("VIS_ROOT", "/exports/dinov3_vis"))
+EMBED_ROOT = Path(getenv("EMBED_ROOT", "/exports/dinov2_embeds"))
+MATCH_ROOT = Path(getenv("MATCH_ROOT", "/exports/dinov2_match"))
+VIS_ROOT = Path(getenv("VIS_ROOT", "/exports/dinov2_vis"))
 
 # Network guard: torch.hub remote downloads are disabled unless explicitly opted out
-DINOV3_BLOCK_NET = getenv("DINOV3_BLOCK_NET", "1").strip() == "1"
+DINOV3_BLOCK_NET = getenv("DINOV2_BLOCK_NET", "1").strip() == "1"

@@ -32,7 +32,7 @@ from imatch.tfms import build_transform
 def main():
     
     ## === 이미지 목록 스캔, 가중치 선택, 전처리 구축 등 초기화 ===
-    p = argparse.ArgumentParser(description="DINOv3 Matching Batch Runner")
+    p = argparse.ArgumentParser(description="DINOv2 Matching Batch Runner")
     # 이미지 선택
     p.add_argument("-a","--pair-a", help="ALT.FRAME 또는 ALT (생략시 전체)")
     p.add_argument("-b","--pair-b", help="ALT.FRAME 또는 ALT (생략시 전체)")
@@ -65,9 +65,8 @@ def main():
                       else args.weights)
     weight_roots = [
         Path("/opt/weights"),
-        Path("/opt/weights/01_ViT_LVD-1689M"),
-        Path("/opt/weights/02_ConvNeXT_LVD-1689M"),
-        Path("/opt/weights/03_ViT_SAT-493M"),
+        Path("/opt/weights/01_weights"),
+        Path("/opt/weights/02_with_registers"),
     ]
     weights = resolve_weight_paths(weight_aliases, weight_roots)
     print(f"[weights] selected={len(weights)} → {[w[0] for w in weights]}")
@@ -78,7 +77,7 @@ def main():
     if args.save_emb:
         EMBED_ROOT.mkdir(parents=True, exist_ok=True)
 
-    ## === ※ 이미지 쌍 X 가중치 별 매칭 (DINOv3 아키텍쳐 고유 로직) ※ ===
+    ## === ※ 이미지 쌍 X 가중치 별 매칭 (DINOv2 아키텍쳐 고유 로직) ※ ===
     # 실행
     with torch.inference_mode(), torch.amp.autocast("cuda"):
         for w_alias, hub_name, ckpt in weights:
