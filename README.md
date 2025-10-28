@@ -346,9 +346,10 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
     <br>
 
     한 채널 $c ∈ \{R,G,B\}$ 에 대한 평균:
-      $$ 
-      \mu_c = \frac{1}{N} \sum_{i=1}^{N} \left(\frac{1}{H_i W_i} \sum_{u=1}^{H_i} \sum_{v=1}^{W_i} \frac{x_{i,c}(u,v)}{255}\right)
-      $$
+    
+    $$ 
+    \mu_c = \frac{1}{N} \sum_{i=1}^{N} \left(\frac{1}{H_i W_i} \sum_{u=1}^{H_i} \sum_{v=1}^{W_i} \frac{x_{i,c}(u,v)}{255}\right)
+    $$
     
     <br>
     <div align='center'>
