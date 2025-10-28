@@ -1,12 +1,12 @@
-﻿# DINOv3 Image Matching (Docker)
+﻿# DINOv2 Image Matching (Docker)
 
-Docker Desktop 위에서 DINOv3 기반 이미지 매칭과 시각화를 수행하기 위한 프로젝트.  
-컨테이너 안에서는 1:1 매칭을 수행하도록 구성되어 있으며, 결과(JSON/PNG)는 호스트의 지정된 디렉터리에 저장.
-
+Docker Desktop 위에서 DINOv2 기반 이미지 매칭과 시각화를 수행하기 위한 프로젝트.  
+결과(JSON/PNG)는 호스트의 지정된 디렉터리에 저장.
+<!-- 
 <p align="center">
   <img src="docs/figs/sequence_runner.svg" width = "75%"/>
 </p>
-<p align="center"><em>전체 코드의 호출, 의존관계 시퀀스 다이어그램</em></p>
+<p align="center"><em>전체 코드의 호출, 의존관계 시퀀스 다이어그램</em></p> -->
 
 
 ---
@@ -19,11 +19,11 @@ Docker Desktop 위에서 DINOv3 기반 이미지 매칭과 시각화를 수행�
 - **NVIDIA GPU & 최신 드라이버** (CUDA 12.x 호환)
 - **NVIDIA Container Toolkit** (Docker Desktop 설치 시 자동 포함)
 - 권장 체크 명령
+
   ```powershell
   docker --version
   nvidia-smi
   ```
-
 
 ### 0-1) Docker Desktop 설치
 - 개인 PC 운영체제에 맞는 Docker Desktop 다운로드 후 설치 
@@ -54,19 +54,18 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
 
 
 ### 0-2) Docker Desktop 설치 후 기본 설정
-- Docker Desktop 실행 → 리소스 제한 (CPU/Memory) → WSL2 (Windows) 연동 등 환경 설정 확인
-- 프로젝트에 필요한 GPU 관련 드라이버/Container Runtime(NVIDIA Container toolkit) 설치
+- 프로젝트에 필요한 GPU 관련 드라이버 등 (NVIDIA Container toolkit) 설치
 
 ### 0-3) 프로젝트 디렉터리 준비
 - 로컬 경로를 미리 생성한다.\
   작업할 디렉토리: `<Your>\<Project>\<Directory>` 로 가정할 때,
   
   ```bash
-  mkdir <Your>\<Project>\<Directory>\dinov3_main      # 본 프로젝트 경로
-  mkdir <Your>\<Project>\<Directory>\dinov3_src       # DINOv3
-  mkdir <Your>\<Project>\<Directory>\dinov3_weights   # DINOv3에서 제공한 백본 경로
-  mkdir <Your>\<Project>\<Directory>\dinov3_data      # 활용할 입력 데이터셋 경로
-  mkdir <Your>\<Project>\<Directory>\dinov3_exports   # 본 프로젝트의 출력 저장 경로
+  mkdir <Your>\<Project>\<Directory>\dinov2_main      # 본 프로젝트 경로
+  mkdir <Your>\<Project>\<Directory>\dinov2_src       # DINOv2
+  mkdir <Your>\<Project>\<Directory>\dinov2_weights   # DINOv2에서 제공한 백본 경로
+  mkdir <Your>\<Project>\<Directory>\dinov3_data      # 활용할 입력 데이터셋 경로 (dinov3와 같이 활용)
+  mkdir <Your>\<Project>\<Directory>\dinov2_exports   # 본 프로젝트의 출력 저장 경로
   ```
 
 - 그리고 Docker Desktop에 Docker Desktop Settings → Resources → File Sharing 에서 프로젝트/데이터 폴더가 공유되어 있는지 확인
@@ -90,11 +89,11 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
 
   | 변수 | 설명 | 예시 (Windows) |
   | --- | --- | --- |
-  | `PROJECT_HOST` | `project/` 폴더 실경로 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_main\project` |
-  | `CODE_HOST` | dinov3 원본 리포지터리 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_src` |
-  | `WEIGHTS_HOST` | `.pth` 가중치 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_weights` |
+  | `PROJECT_HOST` | `project/` 폴더 실경로 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov2_main\project` |
+  | `CODE_HOST` | dinov3 원본 리포지터리 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov2_src` |
+  | `WEIGHTS_HOST` | `.pth` 가중치 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov2_weights` |
   | `DATASET_HOST` | 이미지 데이터셋 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_data` |
-  | `EXPORT_HOST` | JSON/PNG 결과 저장 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov3_exports` |
+  | `EXPORT_HOST` | JSON/PNG 결과 저장 루트 | `D:\GoogleDrive\KNK_Lab\_Projects\dinov2_exports` |
 
 
 ### 0-5) Docker Compose 빌드 단계
@@ -106,7 +105,7 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
   * 그러면 빌드 하면서 마지막에 
   ```powershell
   [+] Building 1/1
-  ✔ dinov3:cuda12.1-py310  Built
+  ✔ dinov2:cuda12.1-py310  Built
   ```
 
 ### 0-6) Docker 컨테이너 실행 및 확인
@@ -118,8 +117,8 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
   * 그러면 컨테이너가 실행 준비 완료 되었다는 것을 다음과 같이 나온다:
   ```powershell
   [+] Running 2/2
-  ✔ Network dinov3_main_default  Created                   0.0s 
-  ✔ Container dinov3-matching    Started                   0.5s 
+  ✔ Network dinov2_main_default  Created                   0.0s 
+  ✔ Container dinov2-matching    Started                   0.5s 
   ```
 
 - 컨테이너 실행 하는지 확인:
@@ -130,7 +129,7 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
   * 그려면 아래와 같이 나옴:
   ```bash
   NAME              IMAGE                   COMMAND                   SERVICE    CREATED         STATUS         PORTS
-  dinov3-matching   dinov3:cuda12.1-py310   "bash -lc 'sleep inf…"   matching   8 seconds ago   Up 7 seconds
+  dinov2-matching   dinov2:cuda12.1-py310   "bash -lc 'sleep inf…"   matching   8 seconds ago   Up 7 seconds
   ```
 
 ### 0-7) Docker 초기 진입/테스트 
@@ -158,10 +157,10 @@ Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Architecture
 
 ## 1) 저장소 구조 & 필수 리소스
 
-- 아래와 같이 `dinov3_main` 의 디렉터리는 다음과 같이 있어야 한다.
+- 아래와 같이 `dinov2_main` 의 디렉터리는 다음과 같이 있어야 한다.
 
 ```bash
-dinov3_main/
+dinov2_main/
 ├─ project/
 │  ├─ imatch/           # 라이브러리 모듈
 │  ├─ run.py            # 매칭 실행 엔트리
@@ -176,34 +175,34 @@ dinov3_main/
 
 필수 리소스 (작업할 디렉토리: `<Your>\<Project>\<Directory>` 라고 가정)
 - **본 실행 프로젝트**  
-  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_main`
+  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov2_main`
 
 - **facebookresearch/dinov3** 저장소 (코드 참조용)  
-  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_src`
+  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov2_src`
 
 - **사전 학습 가중치(.pth)**  
-  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_weights`
+  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov2_weights`
 
-- **매칭 대상 이미지 데이터셋**  
+- **매칭 대상 이미지 데이터셋 (DINOv3와 같이 활용)**  
   > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_data`
 
 - **결과 저장 디렉터리**  
-  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov3_exports`
+  > _예시 위치:_ `<Your>\<Project>\<Directory>\dinov2_exports`
 
 
 ### 1-1) 프로젝트 저장
 
 
-- 작업하고자 하는 디렉토리(_`<Your>\<Project>\<Directory>`_)에 먼저 접근하여 본 프로젝트를 `dinov3_main` 하위 경로에 clone한다. 
+- 작업하고자 하는 디렉토리(_`<Your>\<Project>\<Directory>`_)에 먼저 접근하여 본 프로젝트를 `dinov2_main` 하위 경로에 clone한다. 
 
   ```Bash
-  git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov3_main
+  git clone https://github.com/ZachNK/ImgMatching_DINOv3.git .\dinov2_main
   ```
 
 ### 1-2) DINOv3 원본 저장
 
 
-- 작업할 경로 (_`<Your>\<Project>\<Directory>`_)에서 `dinov3_src` 하위 경로에 DINOv3 원본을 저장한다.
+- 작업할 경로 (_`<Your>\<Project>\<Directory>`_)에서 `dinov2_src` 하위 경로에 DINOv3 원본을 저장한다.
 
   ```Bash
   git clone https://github.com/facebookresearch/dinov3.git .\dinov3_src
@@ -211,36 +210,28 @@ dinov3_main/
 
 ### 1-3) 백본 백본 준비 
 
-- _`<Your>\<Project>\<Directory>`_ 경로에 `dinov3_weights` 디렉토리에 백본 데이터를 준비 한다.\
-  https://github.com/facebookresearch/dinov3에 게시된 가중치를 `dinov3_weights`에 바로 저장한다.
+- _`<Your>\<Project>\<Directory>`_ 경로에 `dinov2_weights` 디렉토리에 백본 데이터를 준비 한다.\
+  https://github.com/facebookresearch/dinov3에 게시된 가중치를 `dinov2_weights`에 바로 저장한다.
 
-- `dinov3_weights`에는 백본 종류별로 다시 디렉토리를 생성해야 한다:
+- `dinov2_weights`에는 백본 종류별로 다시 디렉토리를 생성해야 한다:
   ```bash
   # dinov3_weights에 디렉토리 추가 생성
-  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M -ErrorAction SilentlyContinue
-  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\02_ConvNeXT_LVD-1689M -ErrorAction SilentlyContinue
-  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\03_ViT_SAT-493M -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\01_weights
+  New-Item -ItemType Directory -Path <Your>\<Project>\<Directory>\dinov3_weights\02_with_registers
   ```
 
 * 각 세부 디렉토리별로 pth 파일들을 이동한다 
   (아래는 CLI명령 예시)
   ```powershell
-  # dinov3_weights 디렉토리에 저장된 .pth 파일들 데이터셋별로 정리
+  # dinov2_weights 디렉토리에 저장된 .pth 파일들 데이터셋별로 정리
 
-  # 1) dinov3_weights\01_ViT_LVD-1689M에 파일 이동 (ViT-S/16 distilled 이동할 때)
-  Move-Item -Path <Your>\<Project>\<Directory>\dinov3_vits16_pretrain_lvd1689m-08c60483.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
+  # 1) dinov2_weights\01_weights에 파일 이동 (ViT-L/14 distilled 이동할 때)
+  Move-Item -Path <Your>\<Project>\<Directory>\dinov2_vitl14_pretrain.pth -Destination <Your>\<Project>\<Directory>\dinov2_weights\01_weights
 
   # ... 나머지 ViT-S+/16 distilled, ViT-B/16 distilled 등 .pth파일 이동
 
-  # 2) dinov3_weights\02_ConvNeXT_LVD-1689M에 파일 이동 (ConvNeXt Tiny 이동할 때)
-  Move-Item -Path <Your>\<Project>\<Directory>\dinov3_convnext_tiny_pretrain_lvd1689m-21b726bb.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
-
-  # ... 나머지 ConvNeXt Small, ConvNeXt Base 등 .pth파일 이동
-
-  # 3) dinov3_weights\03_ViT_SAT-493M에 파일 이동 (ViT-L/16 distilled 이동할 때)
-  Move-Item -Path <Your>\<Project>\<Directory>\dinov3_vitl16_pretrain_sat493m-eadcf0ff.pth -Destination <Your>\<Project>\<Directory>\dinov3_weights\01_ViT_LVD-1689M
-
-  # ... 나머지 dinov3_vit7b16_pretrain_sat493m-a6675841.pth .pth파일 이동
+  # 2) dinov2_weights\02_with_registers에 파일 이동 (ViT-L/14 distilled with Registers 이동할 때)
+  Move-Item -Path <Your>\<Project>\<Directory>\dinov2_vitl14_reg4_pretrain.pth -Destination <Your>\<Project>\<Directory>\dinov2_weights\02_with_registers
   ```
 
 
@@ -266,12 +257,12 @@ dinov3_main/
 
 ### 1-5) 디렉토리 최종
 
-- 본 프로젝트 `dinov3_main`에서 실행한 후 도출한 결과들을 저장할 디렉토리 `dinov3_exports`에 생성한다.\
+- 본 프로젝트 `dinov2_main`에서 실행한 후 도출한 결과들을 저장할 디렉토리 `dinov2_exports`에 생성한다.\
   최종 경로 상태는 아래와 같다:
 
   ```text
   <Your>\<Project>\<Directory>\
-  ├─ dinov3_main\
+  ├─ dinov2_main\
   │  ├─ project\
   │  │  ├─ imatch\
   │  │  ├─ run.py
@@ -283,25 +274,25 @@ dinov3_main/
   │  ├─ .env
   │  ├─ .env.example
   │  └─ README.md
-  ├─ dinov3_src\                 # facebookresearch/dinov3 clone
+  ├─ dinov2_src\                 # facebookresearch/dinov2 clone
   │  ├─ .github
   │  ├─ __pycache__  
-  │  ├─ dinov3  
+  │  ├─ dinov2  
   │  ├─ notebooks  
   │  ├─ .docstr.yaml
   │  └─ hubconf.py 등...
-  ├─ dinov3_weights\
-  │  ├─ 01_ViT_LVD-1689M\
+  ├─ dinov2_weights\
+  │  ├─ 01_weights\
   │  │  └─ *.pth
-  │  ├─ 02_ConvNeXT_LVD-1689M\
+  │  ├─ 02_with_registers\
   │  │  └─ *.pth
   │  └─ … (필요한 가중치별 디렉터리)
-  ├─ dinov3_data\                # 매칭 대상 이미지/데이터셋
+  ├─ dinov3_data\                # 매칭 대상 이미지/데이터셋 (DINOv3 프로젝트와 같이 활용)
   │  └─ … (프로젝트별 입력 데이터)
-  └─ dinov3_exports\             # 결과(JSON/PNG/npy) 저장
-    ├─ dinov3_embeds\
-    ├─ pair_match\
-    └─ pair_vis\
+  └─ dinov2_exports\             # 결과(JSON/PNG/npy) 저장
+    ├─ dinov2_embeds\
+    ├─ dinov2_match\
+    └─ dinov2_vis\
   ```
 
 ---
@@ -337,12 +328,104 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
   * `-a 400.0001`: A이미지는 `400`고도의 `1`번 이미지와
   * `-b 200.0001`: B이미지는 `200`고도의 `1`번 이미지를 서로 매칭 실행 
   
-  
   <p align="center">
     <img src="docs/figs/matching_run option example.png" width="75%">
   </p>
   <p align="center"><em>이미지 매칭 실행 및 json, npy 저장 완료</em></p>
   
+* **`ImageNet` 기반 학습 세트(1.28M 장의 이미지)의 픽셀 통계**:
+  * 대부분의 ImageNet 기반 사전 학습 모델(ViT, DINO, MAE 등)은 학습 시, 입력을 $ (x-mean)/std $ 로 Normalization 했음.
+  * 따라서 추론에서도 같은 통계를 사용하면 모델이 기대한 분포와 일치함.
+  * 픽셀을 먼저 `ConvertImageDtype(torch.float32)/ToTensor()`으로 0~1 범위에 바꾼 뒤 해당 평균/표준편차를 적용해야 적절함.
+  * (마찬가지로, 다른 데이터셋이나 사전학습 설정을 쓴 모델일 경우엔 그 모델이 학습 때 사용한 평균/표준편차 값으로 바꿔주는 것이 최선임)
+  
+* **픽셀 Normalization**:
+  > 1. 먼저 이미지를 `unit8` (`0255 → float(01)`)로 변환. 
+
+    <br>
+    <br>
+
+    한 채널 $c ∈ \{R,G,B\}$ 에 대한 평균:
+      $$ 
+      \mu_c = \frac{1}{N} \sum_{i=1}^{N} \left(\frac{1}{H_i W_i} \sum_{u=1}^{H_i} \sum_{v=1}^{W_i} \frac{x_{i,c}(u,v)}{255}\right)
+      $$
+    
+    <br>
+    <div align='center'>
+    
+    **Note**:
+
+    | `Variables` | `Description` |
+    | -----------: | :------------- |
+    | $x_{i,c}(u,v)$ | $i$ 번째 이미지의 픽셀 값 |
+    | $H_i, W_i$ | 해상도 |
+    | $N$ | 전체 이미지 수 |
+    
+    </div>
+    
+
+
+  > 2. 표준편차는 평균을 뺀 제곱을 평균 낸 뒤 루트 ($\sqrt{}$) 를 취한다 (보통 모집단의 표준편차를 사용). 
+
+    <br>
+    <br>
+
+    $$ 
+    \sigma_c = \sqrt{ \frac{1}{N} \sum_{i=1}^{N} \left( \frac{1}{H_i W_i} \sum_{u=1}^{H_i} \sum_{v=1}^{W_i} \left(\frac{x_{i,c}(u,v)}{255} - \mu_c\right)^2 \right) } 
+    $$
+
+    <br>
+    <details>
+    <summary>ImageNet평균/분산을 누적 계산하면 다음과 같음:</summary>
+      ImageNet을 순회하며 평균/분산을 누적 계산하는 스크립트
+
+    ```powershell
+    import torch
+    from torchvision import datasets, transforms
+    from torch.utils.data import DataLoader
+
+    dataset = datasets.ImageNet(
+        root="/path/to/imagenet",
+        split="train",
+        transform=transforms.ToTensor(),  # 0~1 범위
+    )
+
+    ### DataLoader 파라미터 설명:
+    # dataset: 로드할 데이터 세트
+    # batch_size: 한번에 배치당 로드할 샘플 수(e.g. 256) 
+    # num_workers: 데이터 로딩에 사용할 하위 프로세스의 수 (백그라운드에 이미지 읽고 전처리할 CPU스레드 수, CPU코어 수와 I/O상황에 맞게 조정)
+    # 이 값들이 통계값 자체를 바꾸는 건 아님. 어디까지나 데이터와 로컬 환경에 맞는 실용적인 예시
+    ###
+    loader = DataLoader(dataset, batch_size=256, num_workers=8)
+
+    mean = 0.0
+    var = 0.0
+    num = 0  # 누적 픽셀 수
+    for images, _ in loader:
+        # images shape: [B, 3, H, W]
+        b, c, h, w = images.shape
+        # B(dim=0)는 배치 차원
+        # 3(dim=1)은 채널(RGB)원
+        # H(dim=2)은 세로(높이) 차원
+        # W(dim=3)은 가로(너비) 차원
+        
+        # 모든 픽셀 = 배치 사이즈 X 세로 x 가로
+        pixels = b * h * w
+        # 채널별 픽셀 합계
+        mean += images.sum(dim=[0, 2, 3])
+        # 각 픽셀을 제곱한 값을 채널별로 더해 ∑ x² 제공
+        var += (images ** 2).sum(dim=[0, 2, 3])
+        num += pixels
+
+    mean /= num
+    var /= num
+    std = torch.sqrt(var - mean ** 2)
+    print(mean, std)  # tensor([0.485..., 0.456..., 0.406...]) / ([0.229..., ...])
+    ```
+    </details>
+    <br>
+    <br>
+
 
 - `-a`, `-b`: ALT.FRAME 형식 (예: `400.0001`) \
   지정하지 않으면 모든 조합을 순회.
@@ -352,18 +435,15 @@ docker compose exec matching run --weights vitl16 -a 400.0200 -b 200.0200
 
   | backbone | parameter |
   | -------- | ---- |
-  | `ViT-S/16 distilled` | `vits16` |    
-  | `ViT-S+/16 distilled` |`vits16+` |   
-  | `ViT-B/16 distilled` | `vitb16` |
-  | `ViT-L/16 distilled` | `vitl16` | 
-  | `ViT-H+/16 distilled` | `vith16+` |
-  | `ViT-7B/16` | `vit7b16` |
-  | `ConvNeXt Tiny` | `cxTiny` |  
-  | `ConvNeXt Small` | `cxSmall` |  
-  | `ConvNeXt Base` | `cxBase` |   
-  | `ConvNeXt Large` | `cxLarge` |  
-  | `ViT-L/16 distilled` | `vitl16sat` | 
-  | `ViT-7B/16` | `vit7b16sat` |
+  | `ViT-S/14 distilled` | `vitb14` |
+  | `ViT-S/14 distilled` | `vits14` |
+  | `ViT-B/14 distilled` | `vitg14` |
+  | `ViT-B/14 distilled` | `vitl14` |
+  | `ViT-L/14 distilled` | `vits14_reg` |
+  | `ViT-L/14 distilled` | `vitb14_reg` |
+  | `ViT-g/14` | `vitg14_reg` |
+  | `ViT-g/14` | `vitl14_reg` |
+  
 
 
 - 주요 튜닝 파라미터

@@ -1,74 +1,99 @@
 """
-DINOv3 torch.hub 모델을 직접 로드해서 단일 이미지를 추론하는 간단한 스크립트.
+DINOv2 torch.hub 모델을 직접 로드해서 단일 이미지를 추론하는 간단한 스크립트.
 """
-
 from __future__ import annotations
-
+import warnings
+import math
 import torch
 import numpy as np
-from pathlib import Path
-
+from pathlib import Path as P
 from imatch.features import extract_global_feature
-from imatch.io_images import load_image_tensor
 from imatch.tfms import build_transform
-
-
-REPO_DIR = Path("/workspace/dinov3")
-CKPT_PATH = Path("/opt/weights/01_ViT_LVD-1689M/dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth")
-IMAGE_PATH = Path("/opt/datasets/250912143954_450/250912143954_450_0001.jpg")
-HUB_ENTRY = "dinov3_vitl16"
-IMAGE_SIZE = 336
-
-
-def load_dinov3_model() -> torch.nn.Module:
-    model = torch.hub.load(
-        str(REPO_DIR),
-        HUB_ENTRY,
-        source="local",
-        trust_repo=True,
-        pretrained=False,
-    )
+from imatch.io_images import load_image_tensor
+# 백본 모델, 체크포인트, 테스트 이미지 경로 설정
+repo = P("/workspace/dinov2")
+ckpt = P("/opt/weights/01_weights/dinov2_vitl14_pretrain.pth")
+img = P("/opt/datasets/250912150549_400/250912150549_400_0010.jpg")
+# DINOv2 모델 로드 함수
+def load_dinov2_model() -> torch.nn.Module: # torch.nn.Module 반환
+    ### 로컬 저장소에서 DINOv2 vitl14 모델 로드
+    # repo.as_posix(): 로컬 경로 문자열
+    # 'dinov2_vitl14': torch.hub에 등록된 모델 이름
+    # source='local': 로컬 저장소에서 로드
+    # trust_repo=False: 신뢰할 수 없는 저장소로 간주 (보안 경고 비활성화)
+    model = torch.hub.load(repo.as_posix(), 'dinov2_vitl14', source='local', trust_repo=False)
+    ### 체크포인트 로드 및 모델 가중치 설정
     try:
-        state = torch.load(str(CKPT_PATH), map_location="cpu", weights_only=True)
+        # 백본 모델을 GPU에 로드 시도, 가능하면 'cuda:0' 사용
+        state = torch.load(ckpt.as_posix(), map_location="cuda:0")
     except TypeError:
-        state = torch.load(str(CKPT_PATH), map_location="cpu")
+        # 실패 시 CPU에 로드
+        state = torch.load(ckpt.as_posix(), map_location="cpu")
+    # 체크포인트가 'state_dict' 키를 포함하는 딕셔너리인 경우 해당 값으로 교체
     if isinstance(state, dict) and "state_dict" in state:
+        # state_dict 형태로 가중치 추출
         state = state["state_dict"]
+    # 'module.' 접두사가 붙은 키를 정리하여 모델에 맞게 조정
     cleaned_state = {k[7:] if k.startswith("module.") else k: v for k, v in state.items()}
+    # 모델에 정리된 가중치 로드, 엄격 모드 해제, 누락되거나 예기치 않은 키 경고 출력 (필요 시)
     missing, unexpected = model.load_state_dict(cleaned_state, strict=False)
+    # 경고 출력
     if missing:
         print(f"[ckpt][warn] missing keys: {len(missing)}")
+    # 예기치 않은 키가 있으면 출력
     if unexpected:
         print(f"[ckpt][warn] unexpected keys: {len(unexpected)}")
+    # 모델 반환 
     return model
-
-
-def main() -> None:
+# 메인 함수: 모델 로드, 이미지 전처리, 특징 추출 및 저장
+def main() -> None: # 반환값 없음
+    # 불필요한 경고 무시 설정
+    warnings.filterwarnings("ignore", message="xFormers is not available")
+    # 장치 설정: CUDA 사용 가능 시 GPU, 아니면 CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = load_dinov3_model().to(device).eval()
+    # DINOv2 모델 로드 및 평가 모드 설정
+    model = load_dinov2_model().to(device).eval()
+    # 이미지 로드 및 전처리
+    img_tensor = load_image_tensor(img.as_posix())
+    ### 전처리: 이미지 크기 조정 및 정규화
+    patch_s = model.patch_embed.patch_size # 모델의 패치 크기 가져오기
+    desired = 1024
+    
+    patch_m = math.floor(desired / patch_s[0]) # 패치 크기의 배수 계산
+    # build_transform 함수로 전처리기 빌드
+    transform = build_transform(patch_size=patch_s[0], patch_multiple=patch_m, interpolation="bicubic", normalize=True) # vitl14 모델에 맞는 전처리 크기 설정
+    
+    print("img_tensor:", img_tensor.shape)
 
-    img_tensor = load_image_tensor(IMAGE_PATH)
-    transform = build_transform(IMAGE_SIZE)
+    # 전처리된 이미지 텐서를 배치 차원 추가 후 장치로 이동
     input_tensor = transform(img_tensor).unsqueeze(0).to(device)
-
+    ### 특징 추출: 전역 특징 벡터 계산
     with torch.inference_mode():
+        # pooled_vec: 전역 특징 벡터
         pooled_vec = extract_global_feature(model, input_tensor, str(device))
-
+    ### pooled_vec: 전역 특징 벡터를 CPU로 이동 후 분리
     pooled_vec = pooled_vec.detach().cpu()
+    # 결과 출력: 형태 및 값
     print("Pooled feature shape:", tuple(pooled_vec.shape))
-    print("Pooled feature (first 10 elements):", pooled_vec[:10].tolist())
-
-    export_dir = Path("/exports")
+    # 결과 출력: 값 (리스트 형태)
+    print("Pooled feature:", pooled_vec.tolist())
+    ### 특징 백터(임베딩)을 numpy 배열 및 CSV로 저장
+    export_dir = P("/exports")
     export_dir.mkdir(parents=True, exist_ok=True)
-    npy_path = export_dir / "pooled_feature.npy"
-    csv_path = export_dir / "pooled_feature.csv"
-
+    # pooled_feature_dinov2.npy (npy 배열): 백본 정보 저장
+    npy_path = export_dir / "pooled_feature_dinov2.npy"
+    # csv_path (CSV 파일): 백본 정보 저장
+    csv_path = export_dir / "pooled_feature_dinov2.csv"
+    ### numpy 배열 및 CSV로 저장
     pooled_arr = pooled_vec.numpy()
+    # npy_path: numpy 배열로 저장, pooled_arr: numpy 배열
     np.save(npy_path, pooled_arr)
+    # csv_path: CSV 파일로 저장, pooled_arr[None, :]: 2D 배열로 변환
     np.savetxt(csv_path, pooled_arr[None, :], delimiter=",")
-    print(f"[saved] numpy array -> {npy_path}")
-    print(f"[saved] csv row     -> {csv_path}")
-
-
+    ### 저장 완료 메시지 출력
+    # npy 파일로 저장
+    print(f"[saved] DINOv2 Test: numpy array -> {npy_path}")
+    # 파일 완료로 저장
+    print(f"[saved] DINOv2 Test: csv row     -> {csv_path}")
 if __name__ == "__main__":
     main()
