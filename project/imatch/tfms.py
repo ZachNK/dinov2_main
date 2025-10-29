@@ -5,7 +5,7 @@ from torchvision import transforms
 def build_transform(
     ### 이미지 전처리(transform) 파이프라인을 구축한다.
     # patch_size: 모델의 패치 크기 (예: 16, 14 등)
-    # pathch_multiple: 입력 이미지 크기를 패치 크기의 배수로 조정 (기본값: 16)
+    # patch_multiple: 입력 이미지 크기를 패치 크기의 배수로 조정 (기본값: 16)
     # interpolation: 리사이즈 시 사용할 보간법 (기본값: "bicubic")
     # normalize: 이미지 정규화 여부 (기본값: True)  
     patch_size: int, # 모델 패치 크기 (예: 16, 14 등)
